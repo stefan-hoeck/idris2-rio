@@ -6,9 +6,7 @@ license      = "BSD-3 Clause"
 brief        = "A simple effect system based on the RIO monad"
 langversion >= 0.5.1
 
--- packages to add to search path
--- depends =
-
 sourcedir = "src"
 
 modules = Control.RIO
+        , Control.RIO.State
