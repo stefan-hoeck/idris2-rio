@@ -9,5 +9,10 @@ langversion >= 0.5.1
 sourcedir = "src"
 
 modules = Control.RIO
+        , Control.RIO.App
         , Control.RIO.Console
+        , Control.RIO.File
         , Control.RIO.State
+
+        , Data.FilePath
+        , Data.Union
