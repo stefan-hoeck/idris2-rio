@@ -14,6 +14,7 @@ modules = Control.RIO
         , Control.RIO.File
         , Control.RIO.Logging
         , Control.RIO.State
+        , Control.RIO.Sys
 
         , Data.FilePath
         , Data.Union
