@@ -12,6 +12,7 @@ modules = Control.RIO
         , Control.RIO.App
         , Control.RIO.Console
         , Control.RIO.File
+        , Control.RIO.Logging
         , Control.RIO.State
 
         , Data.FilePath
