@@ -2,6 +2,7 @@ module Control.RIO.File
 
 import public Control.RIO.App
 import public Data.FilePath
+import System.Directory
 import System.File
 
 %default total
@@ -12,12 +13,22 @@ import System.File
 
 public export
 data FileErr : Type where
-  MkFileErr :  (mode  : FileMode)
-            -> (path  : FilePath)
-            -> (error : FileError)
-            -> FileErr
+  MkFileErr     :  (mode  : FileMode)
+                -> (path  : FilePath)
+                -> (error : FileError)
+                -> FileErr
 
-  LimitExceeded : (path : FilePath) -> (limit : Bits32) -> FileErr
+  LimitExceeded :  (path : FilePath)
+                -> (limit : Bits32)
+                -> FileErr
+
+  CurDir        : FileErr
+
+  ChangeDir     : FilePath -> FileErr
+
+  ListDir       : FilePath -> FileError -> FileErr
+
+  MkDir         : FilePath -> FileError -> FileErr
 
 modeVerb : FileMode -> String
 modeVerb Read    = "reading"
@@ -30,6 +41,12 @@ printErr (MkFileErr m p err) =
   "Error when \{modeVerb m} \"\{p}\": \{show err}"
 printErr (LimitExceeded p _) =
   "Error when reading \"\{p}\": File size limit exceeded."
+printErr CurDir = "Failed to get current directory"
+printErr (ChangeDir p) = "Failed to change to directory \"\{p}\""
+printErr (ListDir p err) =
+  "Error when reading directory \"\{p}\": \{show err}."
+printErr (MkDir p err) =
+  "Error when creating directory \"\{p}\": \{show err}."
 
 --------------------------------------------------------------------------------
 --          Record
@@ -55,6 +72,18 @@ record FS_ where
   ||| such as `/dev/zero`
   read_   : FilePath -> Bits32 -> IO (Either FileErr String)
 
+  ||| Prints the current working directory.
+  curDir_ : IO (Either FileErr FilePath)
+
+  ||| Change to the given directory
+  changeDir_ : FilePath -> IO (Either FileErr ())
+
+  ||| List entries in a directory (without `.` and `..`)
+  listDir_ : FilePath -> IO (Either FileErr (List FilePath))
+
+  ||| Creates the given directory
+  mkDir_ : FilePath -> IO (Either FileErr ())
+
 --------------------------------------------------------------------------------
 --          Interface
 --------------------------------------------------------------------------------
@@ -75,6 +104,11 @@ export
 exists : FS e => FilePath -> RIO e x Bool
 exists path = fs >>= \r => liftIO (exists_ r path)
 
+||| True if the given file does not exist in the file system
+export
+missing : FS e => FilePath -> RIO e x Bool
+missing = map not . exists
+
 ||| Writes the given string to a file.
 export
 write : FS e => Has FileErr xs => FilePath -> String -> App e xs ()
@@ -90,6 +124,51 @@ append path str = fs >>= \r => injectIO (append_ r path str)
 export
 read : FS e => Has FileErr xs => FilePath -> Bits32 -> App e xs String
 read path limit = fs >>= \r => injectIO (read_ r path limit)
+
+||| Returns the current directory's path.
+export
+curDir : FS e => Has FileErr xs => App e xs FilePath
+curDir = fs >>= \r => injectIO r.curDir_
+
+||| Changes the working directory
+export
+chgDir : FS e => Has FileErr xs => (dir : FilePath) -> App e xs ()
+chgDir dir = fs >>= \r => injectIO (r.changeDir_ dir)
+
+||| Runs an action in the given directory, changing back
+||| to the current directory afterwards.
+export
+inDir :  FS e
+      => Has FileErr xs
+      => (dir : FilePath)
+      -> (act : App e xs a)
+      -> App e xs a
+inDir dir act = do
+  cur <- curDir
+  finally (chgDir cur) (chgDir dir >> act)
+
+||| List entries in a directory (without `.` and `..`)
+export
+listDir : FS e => Has FileErr xs => FilePath -> App e xs (List FilePath)
+listDir dir = fs >>= \r => injectIO (r.listDir_ dir)
+
+||| Creates the given directory
+export
+mkDir : FS e => Has FileErr xs => FilePath -> App e xs ()
+mkDir dir = fs >>= \r => injectIO (r.mkDir_ dir)
+
+||| Creates the given directory (including parent directories)
+export
+mkDirP : FS e => Has FileErr xs => FilePath -> App e xs ()
+mkDirP dir = go (parentDirs dir) >> mkDir dir
+  where go : List FilePath -> App e xs ()
+        go []        = pure ()
+        go (x :: xs) = when !(missing x) $ go xs >> mkDir x
+
+||| Creates the parent directory of the given file
+export
+mkParentDir : FS e => Has FileErr xs => FilePath -> App e xs ()
+mkParentDir = traverse_ mkDirP . parentDir
 
 --------------------------------------------------------------------------------
 --          Default FS
@@ -114,12 +193,32 @@ readImpl fp limit = do
 
       False => pure (Left $ LimitExceeded fp limit)
 
+curDirImpl : IO (Either FileErr FilePath)
+curDirImpl = do
+  Just s <- currentDir | Nothing => pure (Left CurDir)
+  pure . Right $ MkFP s
+
+changeDirImpl : FilePath -> IO (Either FileErr ())
+changeDirImpl dir = do
+  True <- changeDir dir.path | False => pure (Left $ ChangeDir dir)
+  pure $ Right ()
+
+listDirImpl : FilePath -> IO (Either FileErr $ List FilePath)
+listDirImpl dir = bimap (ListDir dir) (map MkFP) <$> listDir dir.path
+
+mkDirImpl : FilePath -> IO (Either FileErr ())
+mkDirImpl dir = mapFst (MkDir dir) <$> createDir dir.path
+
 ||| A computer's local file system
 export
 local : FS_
 local = MkFS {
-    write_  = writeImpl
-  , append_ = appendImpl
-  , exists_ = \fp => exists fp.path
-  , read_   = readImpl
+    write_     = writeImpl
+  , append_    = appendImpl
+  , exists_    = \fp => exists fp.path
+  , read_      = readImpl
+  , curDir_    = curDirImpl
+  , changeDir_ = changeDirImpl
+  , listDir_   = listDirImpl
+  , mkDir_     = mkDirImpl
   }
