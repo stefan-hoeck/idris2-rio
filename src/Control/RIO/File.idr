@@ -1,7 +1,7 @@
 module Control.RIO.File
 
-import Control.RIO.App
-import Data.FilePath
+import public Control.RIO.App
+import public Data.FilePath
 import System.File
 
 %default total
