@@ -2,6 +2,10 @@ module Control.RIO.File
 
 import public Control.RIO.App
 import public Data.FilePath
+import public Data.List
+import Data.List1
+import Data.IORef
+
 import System.Directory
 import System.File
 
@@ -13,14 +17,11 @@ import System.File
 
 public export
 data FileErr : Type where
-  MkFileErr     :  (mode  : FileMode)
-                -> (path  : FilePath)
-                -> (error : FileError)
-                -> FileErr
+  ReadErr       : (path : FilePath) -> (error : FileError) -> FileErr
 
-  LimitExceeded :  (path : FilePath)
-                -> (limit : Bits32)
-                -> FileErr
+  WriteErr      : (path : FilePath) -> (error : FileError) -> FileErr
+
+  LimitExceeded : (path : FilePath) -> (limit : Bits32) -> FileErr
 
   CurDir        : FileErr
 
@@ -30,15 +31,12 @@ data FileErr : Type where
 
   MkDir         : FilePath -> FileError -> FileErr
 
-modeVerb : FileMode -> String
-modeVerb Read    = "reading"
-modeVerb Write   = "writing to"
-modeVerb Execute = "executing"
-
 export
 printErr : FileErr -> String
-printErr (MkFileErr m p err) =
-  "Error when \{modeVerb m} \"\{p}\": \{show err}"
+printErr (ReadErr p err) =
+  "Error when reading from \"\{p}\": \{show err}"
+printErr (WriteErr p err) =
+  "Error when writing to \"\{p}\": \{show err}"
 printErr (LimitExceeded p _) =
   "Error when reading \"\{p}\": File size limit exceeded."
 printErr CurDir = "Failed to get current directory"
@@ -175,39 +173,39 @@ mkParentDir = traverse_ mkDirP . parentDir
 --------------------------------------------------------------------------------
 
 writeImpl : FilePath -> String -> IO (Either FileErr ())
-writeImpl fp s = mapFst (MkFileErr Write fp) <$> writeFile fp.path s
+writeImpl fp s = mapFst (WriteErr fp) <$> writeFile "\{fp}" s
 
 appendImpl : FilePath -> String -> IO (Either FileErr ())
-appendImpl fp s = mapFst (MkFileErr Write fp) <$> appendFile fp.path s
+appendImpl fp s = mapFst (WriteErr fp) <$> appendFile "\{fp}" s
 
 readImpl : FilePath -> Bits32 -> IO (Either FileErr String)
 readImpl fp limit = do
-  Right s <- withFile fp.path Read pure fileSize
-    | Left err => pure (Left $ MkFileErr Read fp err)
+  Right s <- withFile "\{fp}" Read pure fileSize
+    | Left err => pure (Left $ ReadErr fp err)
   case s <= 0 of
     True => pure (Right "")
     False => case s <= cast limit of
       True  => assert_total $ do
-        Left err <- readFile fp.path | Right s => pure (Right s)
-        pure (Left $ MkFileErr Read fp err)
+        Left err <- readFile "\{fp}" | Right s => pure (Right s)
+        pure (Left $ ReadErr fp err)
 
       False => pure (Left $ LimitExceeded fp limit)
 
 curDirImpl : IO (Either FileErr FilePath)
 curDirImpl = do
   Just s <- currentDir | Nothing => pure (Left CurDir)
-  pure . Right $ MkFP s
+  pure . Right $ fromString s
 
 changeDirImpl : FilePath -> IO (Either FileErr ())
 changeDirImpl dir = do
-  True <- changeDir dir.path | False => pure (Left $ ChangeDir dir)
+  True <- changeDir "\{dir}" | False => pure (Left $ ChangeDir dir)
   pure $ Right ()
 
 listDirImpl : FilePath -> IO (Either FileErr $ List FilePath)
-listDirImpl dir = bimap (ListDir dir) (map MkFP) <$> listDir dir.path
+listDirImpl dir = bimap (ListDir dir) (map fromString) <$> listDir "\{dir}"
 
 mkDirImpl : FilePath -> IO (Either FileErr ())
-mkDirImpl dir = mapFst (MkDir dir) <$> createDir dir.path
+mkDirImpl dir = mapFst (MkDir dir) <$> createDir "\{dir}"
 
 ||| A computer's local file system
 export
@@ -215,7 +213,7 @@ local : FS_
 local = MkFS {
     write_     = writeImpl
   , append_    = appendImpl
-  , exists_    = \fp => exists fp.path
+  , exists_    = \fp => exists "\{fp}"
   , read_      = readImpl
   , curDir_    = curDirImpl
   , changeDir_ = changeDirImpl

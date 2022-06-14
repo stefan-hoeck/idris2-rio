@@ -16,5 +16,9 @@ modules = Control.RIO
         , Control.RIO.State
         , Control.RIO.Sys
 
+        , Control.RIO.Mock.Console
+        , Control.RIO.Mock.File
+        , Control.RIO.Mock.Logging
+
         , Data.FilePath
         , Data.Union
