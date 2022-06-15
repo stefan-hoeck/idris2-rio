@@ -3,6 +3,7 @@ module Control.RIO.Mock.File
 import Control.RIO.App
 import Control.RIO.File
 import Data.FilePath
+import Data.IORef
 import Data.List1
 import Data.Maybe
 import System.File
@@ -124,12 +125,12 @@ pcFocus fs fp = case fsFocus fs fp of
     Nothing    => Nothing
 
 export
-exists : MockFS -> FilePath -> Bool
-exists fs = isJust . fsFocus fs
+exists : FilePath -> MockFS -> Bool
+exists fp fs = isJust $ fsFocus fs fp
 
 export
-mkDir : MockFS -> FilePath -> Either FileErr MockFS
-mkDir fs fp = case pcFocus fs fp of
+mkDir : FilePath -> MockFS -> Either FileErr MockFS
+mkDir fp fs = case pcFocus fs fp of
   Just (Parent c d sx) =>
     let empty := (c, Right $ MkMD [])
         dir   := unDirFocus' (empty :: d.content) sx
@@ -183,3 +184,21 @@ listDir fp fs = case fsFocus fs fp of
   Just (DirF x _)    => Right $ map (fromString . fst) x.content
   Just (FileF _ _ _) => Left (ListDir fp FileReadError)
   Nothing            => Left (ListDir fp FileNotFound)
+
+mock :  IORef MockFS
+     -> (MockFS -> Either FileErr MockFS)
+     -> IO (Either FileErr ())
+
+||| A mock file system
+export
+fs : IORef MockFS -> FS_
+fs ref = MkFS {
+    write_     = \fp,s => mock ref (write fp s)
+  , append_    = \fp,s => mock ref (append fp s)
+  , exists_    = \fp => exists fp <$> readIORef ref
+  , read_      = \fp,l => read fp l <$> readIORef ref 
+  , curDir_    = Right . FP . curDir <$> readIORef ref
+  , changeDir_ = \fp => mock ref (changeDir fp)
+  , listDir_   = \fp => listDir fp <$> readIORef ref
+  , mkDir_     = \fp => mock ref (mkDir fp)
+  }
