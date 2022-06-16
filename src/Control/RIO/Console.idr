@@ -20,24 +20,6 @@ record Console_ where
   getChar_  : IO Char
   getLine_  : IO String
 
-getHead : IORef (Stream a) -> IO a
-getHead ref = readIORef ref >>= \(h :: t) => writeIORef ref t $> h
-
-||| A mock console, which uses the given streams for
-||| simulating input, and the mutable refs for simulating
-||| output.
-export
-mockConsole :  (stdOut : IORef (SnocList String))
-            -> (errOut : IORef (SnocList String))
-            -> (charIn : IORef (Stream Char))
-            -> (lineIn : IORef (Stream String))
-            -> Console_
-mockConsole stdOut errOut charIn lineIn =
-  MkConsole (\s => modifyIORef stdOut (:< s))
-            (\s => modifyIORef errOut (:< s))
-            (getHead charIn)
-            (getHead lineIn)
-
 ||| The default console, reading from standard input and printing
 ||| to standard out and standard err.
 export
