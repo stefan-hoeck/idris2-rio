@@ -16,6 +16,11 @@ record SysErr where
   cmd : String
   err : Int
 
+export
+printErr : SysErr -> String
+printErr (MkSE cmd err) =
+  "Command terminated with error code \{show err}: \{cmd}"
+
 ||| Record representing capabilities for running system calls
 public export
 record Sys where
