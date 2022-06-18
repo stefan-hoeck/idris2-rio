@@ -100,3 +100,7 @@ export
 finally : RIO x () -> RIO x a -> RIO x a
 finally cleanup app =
   Chain app (either (\e => cleanup >> fail e) (\v => cleanup $> v))
+
+export 
+lift : Uninhabited x => RIO x a -> RIO y a
+lift io = catch (\v => absurd v) io

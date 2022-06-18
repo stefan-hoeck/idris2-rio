@@ -1,5 +1,7 @@
 module Data.Union
 
+import Data.List.Quantifiers
+
 %default total
 
 ||| Proof that a value is present in a list. This is
@@ -68,3 +70,10 @@ decomp {prf = S y} {ts = f :: h :: t} (U (S x) val) =
 public export
 handle : (prf : Has t ts) => (t -> r) -> Union ts -> Either (Union (ts - t)) r
 handle g = map g . decomp
+
+||| Handle all of the values in a `Union`.
+public export
+handleAll : (prf : All (\t => t -> a) ts) => Union ts -> a
+handleAll {prf = h :: t} (U Z val)     = h val
+handleAll {prf = h :: t} (U (S x) val) = handleAll (U x val)
+handleAll {prf = []}     x = absurd x
