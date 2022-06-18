@@ -122,6 +122,16 @@ export
 read : FS => Has FileErr xs => FilePath -> Bits32 -> App xs String
 read path limit = injectIO (read_ %search path limit)
 
+||| Delete a file from the file system.
+export
+removeFile : FS => Has FileErr xs => FilePath -> App xs ()
+removeFile path = injectIO (removeFile_ %search path)
+
+||| Delete a file from the file system.
+export
+removeDir : FS => Has FileErr xs => FilePath -> App xs ()
+removeDir path = injectIO (removeDir_ %search path)
+
 ||| Returns the current directory's path.
 export
 curDir : FS => Has FileErr xs => App xs FilePath
