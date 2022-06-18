@@ -53,7 +53,7 @@ printErr (MkDir p err) =
 ||| Record representing a simple file system, where we can
 ||| read from and write to files.
 public export
-record FS_ where
+record FS where
   constructor MkFS
   ||| Writes the string to the file in question
   write_  : FilePath -> String -> IO (Either FileErr ())
@@ -86,86 +86,75 @@ record FS_ where
 --          Interface
 --------------------------------------------------------------------------------
 
-||| Witness that the given environment `e` gives access
-||| to a file system.
-public export
-interface FS (0 e : Type) where
-  fs_ : e -> FS_
-
-||| Get access to the file system from the environment.
-export
-fs : FS e => RIO e x FS_
-fs = asks fs_
-
 ||| True if the given file exists in the file system
 export
-exists : FS e => FilePath -> RIO e x Bool
-exists path = fs >>= \r => liftIO (exists_ r path)
+exists : FS => FilePath -> RIO x Bool
+exists path = liftIO (exists_ %search path)
 
 ||| True if the given file does not exist in the file system
 export
-missing : FS e => FilePath -> RIO e x Bool
+missing : FS => FilePath -> RIO x Bool
 missing = map not . exists
 
 ||| Writes the given string to a file.
 export
-write : FS e => Has FileErr xs => FilePath -> String -> App e xs ()
-write path str = fs >>= \r => injectIO (write_ r path str)
+write : FS => Has FileErr xs => FilePath -> String -> App xs ()
+write path str = injectIO (write_ %search path str)
 
 ||| Writes the given string to a file.
 export
-append : FS e => Has FileErr xs => FilePath -> String -> App e xs ()
-append path str = fs >>= \r => injectIO (append_ r path str)
+append : FS => Has FileErr xs => FilePath -> String -> App xs ()
+append path str = injectIO (append_ %search path str)
 
 ||| Reads a string from a file, the size of which must not
 ||| exceed the given number of bytes.
 export
-read : FS e => Has FileErr xs => FilePath -> Bits32 -> App e xs String
-read path limit = fs >>= \r => injectIO (read_ r path limit)
+read : FS => Has FileErr xs => FilePath -> Bits32 -> App xs String
+read path limit = injectIO (read_ %search path limit)
 
 ||| Returns the current directory's path.
 export
-curDir : FS e => Has FileErr xs => App e xs FilePath
-curDir = fs >>= \r => injectIO r.curDir_
+curDir : FS => Has FileErr xs => App xs FilePath
+curDir = injectIO $ curDir_ %search
 
 ||| Changes the working directory
 export
-chgDir : FS e => Has FileErr xs => (dir : FilePath) -> App e xs ()
-chgDir dir = fs >>= \r => injectIO (r.changeDir_ dir)
+chgDir : FS => Has FileErr xs => (dir : FilePath) -> App xs ()
+chgDir dir = injectIO (changeDir_ %search dir)
 
 ||| Runs an action in the given directory, changing back
 ||| to the current directory afterwards.
 export
-inDir :  FS e
+inDir :  FS
       => Has FileErr xs
       => (dir : FilePath)
-      -> (act : App e xs a)
-      -> App e xs a
+      -> (act : App xs a)
+      -> App xs a
 inDir dir act = do
   cur <- curDir
   finally (chgDir cur) (chgDir dir >> act)
 
 ||| List entries in a directory (without `.` and `..`)
 export
-listDir : FS e => Has FileErr xs => FilePath -> App e xs (List FilePath)
-listDir dir = fs >>= \r => injectIO (r.listDir_ dir)
+listDir : FS => Has FileErr xs => FilePath -> App xs (List FilePath)
+listDir dir = injectIO (listDir_ %search dir)
 
 ||| Creates the given directory
 export
-mkDir : FS e => Has FileErr xs => FilePath -> App e xs ()
-mkDir dir = fs >>= \r => injectIO (r.mkDir_ dir)
+mkDir : FS => Has FileErr xs => FilePath -> App xs ()
+mkDir dir = injectIO (mkDir_ %search dir)
 
 ||| Creates the given directory (including parent directories)
 export
-mkDirP : FS e => Has FileErr xs => FilePath -> App e xs ()
+mkDirP : FS => Has FileErr xs => FilePath -> App xs ()
 mkDirP dir = go (parentDirs dir) >> mkDir dir
-  where go : List FilePath -> App e xs ()
+  where go : List FilePath -> App xs ()
         go []        = pure ()
         go (x :: xs) = when !(missing x) $ go xs >> mkDir x
 
 ||| Creates the parent directory of the given file
 export
-mkParentDir : FS e => Has FileErr xs => FilePath -> App e xs ()
+mkParentDir : FS => Has FileErr xs => FilePath -> App xs ()
 mkParentDir = traverse_ mkDirP . parentDir
 
 --------------------------------------------------------------------------------
@@ -209,7 +198,7 @@ mkDirImpl dir = mapFst (MkDir dir) <$> createDir "\{dir}"
 
 ||| A computer's local file system
 export
-local : FS_
+local : FS
 local = MkFS {
     write_     = writeImpl
   , append_    = appendImpl

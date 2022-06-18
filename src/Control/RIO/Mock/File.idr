@@ -191,7 +191,7 @@ mock :  IORef MockFS
 
 ||| A mock file system
 export
-fs : IORef MockFS -> FS_
+fs : IORef MockFS -> FS
 fs ref = MkFS {
     write_     = \fp,s => mock ref (write fp s)
   , append_    = \fp,s => mock ref (append fp s)

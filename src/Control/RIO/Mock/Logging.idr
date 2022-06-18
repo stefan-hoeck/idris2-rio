@@ -18,5 +18,5 @@ mkMock : IO Mock
 mkMock = MkMock <$> newIORef [<]
 
 export
-logging : Mock -> Logger_
+logging : Mock -> Logger
 logging m = MkLogger $ \l,s => modifyIORef m.ref (:< (l,s))

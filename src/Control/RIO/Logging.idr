@@ -31,61 +31,53 @@ Ord LogLevel where compare = compare `on` priority
 --------------------------------------------------------------------------------
 
 public export
-record Logger_ where
+record Logger where
   constructor MkLogger
   log : LogLevel -> Lazy String -> IO ()
 
 ||| Only log message of at least the given logging level.
 export
-filter : LogLevel -> Logger_ -> Logger_
+filter : LogLevel -> Logger -> Logger
 filter lvl x = MkLogger $ \l,s => case l >= lvl of
   True  => x.log l s
   False => pure ()
 
 export
-Semigroup Logger_ where
+Semigroup Logger where
   x <+> y = MkLogger $ \l,s => x.log l s >> y.log l s
 
 export
-Monoid Logger_ where
+Monoid Logger where
   neutral = MkLogger $ \_,_ => pure ()
 
-export
-consoleLogger : Console_ -> Logger_
-consoleLogger c = MkLogger $ \l,s => ?foo
+-- export
+-- consoleLogger : Console -> Logger
+-- consoleLogger c = MkLogger $ \l,s => ?foo
 
 --------------------------------------------------------------------------------
 --          Interface
 --------------------------------------------------------------------------------
 
-public export
-interface Logger (0 e : Type) where
-  logger_ : e -> Logger_
-
 export
-logger : Logger e => RIO e x Logger_
-logger = asks logger_
-
-export
-log : Logger e => LogLevel -> Lazy String -> RIO e x ()
-log l s = logger >>= \x => liftIO (x.log l s)
+log : Logger => LogLevel -> Lazy String -> RIO x ()
+log l s = liftIO (log %search l s)
 
 export %inline
-trace : Logger e => Lazy String -> RIO e x ()
+trace : Logger => Lazy String -> RIO x ()
 trace = log Trace
 
 export %inline
-debug : Logger e => Lazy String -> RIO e x ()
+debug : Logger => Lazy String -> RIO x ()
 debug = log Debug
 
 export %inline
-info : Logger e => Lazy String -> RIO e x ()
+info : Logger => Lazy String -> RIO x ()
 info = log Info
 
 export %inline
-warn : Logger e => Lazy String -> RIO e x ()
+warn : Logger => Lazy String -> RIO x ()
 warn = log Warning
 
 export %inline
-error : Logger e => Lazy String -> RIO e x ()
+error : Logger => Lazy String -> RIO x ()
 error = log Error
