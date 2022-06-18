@@ -21,6 +21,8 @@ data FileErr : Type where
 
   WriteErr      : (path : FilePath) -> (error : FileError) -> FileErr
 
+  DeleteErr     : (path : FilePath) -> (error : FileError) -> FileErr
+
   LimitExceeded : (path : FilePath) -> (limit : Bits32) -> FileErr
 
   CurDir        : FileErr
@@ -37,6 +39,8 @@ printErr (ReadErr p err) =
   "Error when reading from \"\{p}\": \{show err}"
 printErr (WriteErr p err) =
   "Error when writing to \"\{p}\": \{show err}"
+printErr (DeleteErr p err) =
+  "Error when deleteing \"\{p}\": \{show err}"
 printErr (LimitExceeded p _) =
   "Error when reading \"\{p}\": File size limit exceeded."
 printErr CurDir = "Failed to get current directory"
@@ -60,6 +64,12 @@ record FS where
 
   ||| Appends the string to the file in question
   append_ : FilePath -> String -> IO (Either FileErr ())
+
+  ||| Deletes the given file.
+  removeFile_ : FilePath -> IO (Either FileErr ())
+
+  ||| Deletes the given directory.
+  removeDir_ : FilePath -> IO (Either FileErr ())
 
   ||| Checks if the given file exists in the file system
   exists_ : FilePath -> IO Bool
@@ -167,6 +177,12 @@ writeImpl fp s = mapFst (WriteErr fp) <$> writeFile "\{fp}" s
 appendImpl : FilePath -> String -> IO (Either FileErr ())
 appendImpl fp s = mapFst (WriteErr fp) <$> appendFile "\{fp}" s
 
+removeFileImpl : FilePath -> IO (Either FileErr ())
+removeFileImpl fp = mapFst (DeleteErr fp) <$> removeFile "\{fp}"
+
+removeDirImpl : FilePath -> IO (Either FileErr ())
+removeDirImpl fp = Right <$> removeDir "\{fp}"
+
 readImpl : FilePath -> Bits32 -> IO (Either FileErr String)
 readImpl fp limit = do
   Right s <- withFile "\{fp}" Read pure fileSize
@@ -200,12 +216,14 @@ mkDirImpl dir = mapFst (MkDir dir) <$> createDir "\{dir}"
 export
 local : FS
 local = MkFS {
-    write_     = writeImpl
-  , append_    = appendImpl
-  , exists_    = \fp => exists "\{fp}"
-  , read_      = readImpl
-  , curDir_    = curDirImpl
-  , changeDir_ = changeDirImpl
-  , listDir_   = listDirImpl
-  , mkDir_     = mkDirImpl
+    write_      = writeImpl
+  , append_     = appendImpl
+  , removeFile_ = removeFileImpl
+  , removeDir_  = removeDirImpl
+  , exists_     = \fp => exists "\{fp}"
+  , read_       = readImpl
+  , curDir_     = curDirImpl
+  , changeDir_  = changeDirImpl
+  , listDir_    = listDirImpl
+  , mkDir_      = mkDirImpl
   }
