@@ -1,5 +1,6 @@
 module Control.RIO.Logging
 
+import Control.ANSI
 import Control.RIO.App
 import Control.RIO.Console
 
@@ -26,6 +27,14 @@ Eq LogLevel where (==) = (==) `on` priority
 public export
 Ord LogLevel where compare = compare `on` priority
 
+export
+Interpolation LogLevel where
+  interpolate Trace   = "trace"
+  interpolate Debug   = "debug"
+  interpolate Info    = "info"
+  interpolate Warning = "warning"
+  interpolate Error   = "error"
+
 --------------------------------------------------------------------------------
 --          Record
 --------------------------------------------------------------------------------
@@ -50,9 +59,26 @@ export
 Monoid Logger where
   neutral = MkLogger $ \_,_ => pure ()
 
--- export
--- consoleLogger : Console -> Logger
--- consoleLogger c = MkLogger $ \l,s => ?foo
+export
+consoleLogger : Console -> (LogLevel -> Lazy String -> String) -> Logger
+consoleLogger c f = MkLogger $ \l,s => case l of
+  Error => c.putErr_ (f l s ++ "\n")
+  _     => c.putStr_ (f l s ++ "\n")
+
+export
+basicConsoleLogger : Console -> Logger
+basicConsoleLogger c = consoleLogger c $ \l,s => "[\{l}] \{s}"
+
+col : LogLevel -> String
+col Trace   = show $ colored White "trace"
+col Debug   = show $ colored Cyan "debug"
+col Info    = show $ colored Green "info"
+col Warning = show $ colored Yellow "warning"
+col Error   = show $ colored Red "error"
+
+export
+colorConsoleLogger : Console -> Logger
+colorConsoleLogger c = consoleLogger c $ \l,s => "[\{col l}] \{s}"
 
 --------------------------------------------------------------------------------
 --          Interface
