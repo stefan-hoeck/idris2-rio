@@ -125,8 +125,8 @@ Monoid (Path Rel) where neutral = PRel [<]
 public export
 record FilePath where
   constructor FP
-  {0 t : PathType}
-  path : Path t
+  {0 pathType : PathType}
+  path        : Path pathType
 
 public export %inline
 Eq FilePath where
