@@ -162,6 +162,23 @@ append : FilePath -> String -> MockFS -> Either FileErr MockFS
 append fp s = writeImpl fp s (++ s)
 
 export
+removeFile : FilePath -> MockFS -> Either FileErr MockFS
+removeFile fp fs = case fsFocus fs fp of
+  Just (FileF _ (MkCtxt start _ end) sx) =>
+    Right $ {root := unDirFocus' (start <>> end) sx} fs
+  Nothing             => Left $ DeleteErr fp FileNotFound
+  Just (DirF {})      => Left $ DeleteErr fp FileNotFound
+
+export
+removeDir : FilePath -> MockFS -> Either FileErr MockFS
+removeDir fp fs = case fsFocus fs fp of
+  Just (DirF (MkMD []) (sx :< (MkCtxt start _ end))) =>
+    Right $ {root := unDirFocus' (start <>> end) sx} fs
+  Just (DirF {})           => Right fs
+  Just (FileF {})          => Left $ DeleteErr fp FileNotFound
+  Nothing                  => Left $ DeleteErr fp FileNotFound
+
+export
 read : FilePath -> Bits32 -> MockFS -> Either FileErr String
 read fp ms fs = case fsFocus fs fp of
   Just (FileF (Regular x) _ _)   => case length x <= cast ms of
@@ -188,17 +205,23 @@ listDir fp fs = case fsFocus fs fp of
 mock :  IORef MockFS
      -> (MockFS -> Either FileErr MockFS)
      -> IO (Either FileErr ())
+mock ref f = do
+  Right fs <- f <$> readIORef ref
+    | Left err => pure (Left err)
+  Right <$> writeIORef ref fs
 
 ||| A mock file system
 export
 fs : IORef MockFS -> FS
 fs ref = MkFS {
-    write_     = \fp,s => mock ref (write fp s)
-  , append_    = \fp,s => mock ref (append fp s)
-  , exists_    = \fp => exists fp <$> readIORef ref
-  , read_      = \fp,l => read fp l <$> readIORef ref 
-  , curDir_    = Right . FP . curDir <$> readIORef ref
-  , changeDir_ = \fp => mock ref (changeDir fp)
-  , listDir_   = \fp => listDir fp <$> readIORef ref
-  , mkDir_     = \fp => mock ref (mkDir fp)
+    write_      = \fp,s => mock ref (write fp s)
+  , append_     = \fp,s => mock ref (append fp s)
+  , removeFile_ = \fp => mock ref (removeFile fp)
+  , removeDir_  = \fp => mock ref (removeDir fp)
+  , exists_     = \fp => exists fp <$> readIORef ref
+  , read_       = \fp,l => read fp l <$> readIORef ref 
+  , curDir_     = Right . FP . curDir <$> readIORef ref
+  , changeDir_  = \fp => mock ref (changeDir fp)
+  , listDir_    = \fp => listDir fp <$> readIORef ref
+  , mkDir_      = \fp => mock ref (mkDir fp)
   }
