@@ -18,7 +18,7 @@ record SysErr where
 
 ||| Record representing capabilities for running system calls
 public export
-record Sys_ where
+record Sys where
   constructor MkSys
   sys_ : String -> IO (Either SysErr ())
   run_ : String -> IO (Either SysErr String)
@@ -27,17 +27,13 @@ record Sys_ where
 --          Interface
 --------------------------------------------------------------------------------
 
-public export
-interface Sys (0 e : Type) where
-  sys_ : e -> Sys_
+export
+sys : Sys => Has SysErr xs => String -> App xs ()
+sys cmd = injectIO (sys_ %search cmd)
 
 export
-sys : Sys e => Has SysErr xs => String -> App e xs ()
-sys cmd = asks sys_ >>= \s => injectIO (s.sys_ cmd)
-
-export
-run : Sys e => Has SysErr xs => String -> App e xs String
-run cmd = asks sys_ >>= \s => injectIO (s.run_ cmd)
+run : Sys => Has SysErr xs => String -> App xs String
+run cmd = injectIO (run_ %search cmd)
 
 --------------------------------------------------------------------------------
 --          Implementation
@@ -55,7 +51,7 @@ runImpl cmd = do
   pure (Right res)
 
 export covering
-system : Sys_
+system : Sys
 system = MkSys sysImpl runImpl
 
 --------------------------------------------------------------------------------
@@ -64,5 +60,5 @@ system = MkSys sysImpl runImpl
 
 ||| Forcefully deletes a directory with all its content
 export
-rmDir : Sys e => FS e => Has SysErr xs => FilePath -> App e xs ()
+rmDir : Sys => FS => Has SysErr xs => FilePath -> App xs ()
 rmDir dir = when !(exists dir) $ sys "rm -rf \{dir}"

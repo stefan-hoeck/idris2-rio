@@ -13,7 +13,7 @@ import System.File
 ||| Record representing a console with
 ||| standard output, error output, and standard input.
 public export
-record Console_ where
+record Console where
   constructor MkConsole
   putStr_   : String -> IO ()
   putErr_   : String -> IO ()
@@ -23,74 +23,63 @@ record Console_ where
 ||| The default console, reading from standard input and printing
 ||| to standard out and standard err.
 export
-stdIO : Console_
+stdIO : Console
 stdIO = MkConsole putStr (\s => ignore $ fPutStr stderr s) getChar getLine
 
 --------------------------------------------------------------------------------
 --          Interface
 --------------------------------------------------------------------------------
 
-||| Witness that the given environment `e` gives access
-||| to a console.
-public export
-interface Console (0 e : Type) where
-  console_ : e -> Console_
-
-||| Get access to the console from the environment.
-export
-console : Console e => RIO e x Console_
-console = asks console_
-
 ||| Put a string to the console's standard output.
 export
-cputStr : Console e => String -> RIO e x ()
-cputStr s = console >>= \c => liftIO $ c.putStr_ s
+cputStr : Console => String -> RIO x ()
+cputStr s = liftIO $ putStr_ %search s
 
 ||| Put a string plus trailing line break
 ||| to the console's standard output.
 export
-cputStrLn : Console e => String -> RIO e x ()
+cputStrLn : Console => String -> RIO x ()
 cputStrLn s = cputStr $ s ++ "\n"
 
 ||| Print a value to the console's standard output.
 export
-cprint : Console e => Show a => a -> RIO e x ()
+cprint : Console => Show a => a -> RIO x ()
 cprint = cputStr . show
 
 ||| Print a value plus trailing lne break
 ||| to the console's standard output.
 export
-cprintLn : Console e => Show a => a -> RIO e x ()
+cprintLn : Console => Show a => a -> RIO x ()
 cprintLn = cputStrLn . show
 
 ||| Put a string to the console's error output.
 export
-cputErr : Console e => String -> RIO e x ()
-cputErr s = console >>= \c => liftIO $ c.putErr_ s
+cputErr : Console => String -> RIO x ()
+cputErr s = liftIO $ putErr_ %search s
 
 ||| Put a string plus trailing line break
 ||| to the console's error output.
 export
-cputErrLn : Console e => String -> RIO e x ()
+cputErrLn : Console => String -> RIO x ()
 cputErrLn s = cputErr $ s ++ "\n"
 
 ||| Print a value to the console's error output.
 export
-cprintErr : Console e => Show a => a -> RIO e x ()
+cprintErr : Console => Show a => a -> RIO x ()
 cprintErr = cputErr . show
 
 ||| Print a value plus trailing lne break
 ||| to the console's error output.
 export
-cprintErrLn : Console e => Show a => a -> RIO e x ()
+cprintErrLn : Console => Show a => a -> RIO x ()
 cprintErrLn = cputErrLn . show
 
 ||| Read a line from the console's standard input.
 export
-cgetLine : Console e => RIO e x String
-cgetLine = console >>= \c => liftIO $ c.getLine_
+cgetLine : Console => RIO x String
+cgetLine = liftIO $ getLine_ %search
 
 ||| Read a single character from the console's standard input.
 export
-cgetChar : Console e => RIO e x Char
-cgetChar = console >>= \c => liftIO $ c.getChar_
+cgetChar : Console => RIO x Char
+cgetChar = liftIO $ getChar_ %search

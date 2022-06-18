@@ -30,7 +30,7 @@ getHead ref = readIORef ref >>= \(h :: t) => writeIORef ref t $> h
 ||| simulating input, and the mutable refs for simulating
 ||| output.
 export
-console : Mock -> Console_
+console : Mock -> Console
 console m =
   MkConsole (\s => modifyIORef m.stdOut (:< s))
             (\s => modifyIORef m.errOut (:< s))
