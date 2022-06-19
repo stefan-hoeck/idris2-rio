@@ -146,7 +146,7 @@ public export
 FromString FilePath where
   fromString s = case split ('/' ==) s of
     "" ::: ps => FP $ PAbs $ [<]   <>< ps
-    s  ::: ps => FP $ PAbs $ [< s] <>< ps
+    s  ::: ps => FP $ PRel $ [< s] <>< ps
 
 namespace FilePath
 
