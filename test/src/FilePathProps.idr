@@ -55,6 +55,16 @@ prop_roundtrip = property $ do
   f <- forAll file
   fromString (show f) === f
 
+prop_prependEmpty : Property
+prop_prependEmpty = property $ do
+  d <- forAll relDir
+  ("" </> d) === FP d
+
+prop_appendEmpty : Property
+prop_appendEmpty = property $ do
+  f <- forAll file
+  (f /> "") === f
+
 --------------------------------------------------------------------------------
 --          Group
 --------------------------------------------------------------------------------
@@ -65,4 +75,6 @@ props = MkGroup "FilePath" [
         ("prop_split", prop_split)
       , ("prop_splitFile", prop_splitFile)
       , ("prop_roundtrip", prop_roundtrip)
+      , ("prop_prependEmpty", prop_prependEmpty)
+      , ("prop_appendEmpty", prop_appendEmpty)
       ]
