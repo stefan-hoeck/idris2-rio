@@ -23,7 +23,7 @@ export
 injectIO : Has x xs => IO (Either x a) -> App xs a
 injectIO = inject . liftEitherIO
 
-export 
+export
 handle : (prf : Has x xs) => (x -> RIO Void a) -> App xs a -> App (xs - x) a
 handle f = catch $ \u => case handle f u of
   Left y  => fail y
@@ -33,6 +33,6 @@ public export
 0 Handler : (a,x : Type) -> Type
 Handler a x = x -> RIO Void a
 
-export 
+export
 handleAll : (prf : All (Handler a) xs) => App xs a -> RIO Void a
 handleAll = catch $ \u => Union.handleAll u

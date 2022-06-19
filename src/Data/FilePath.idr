@@ -146,7 +146,7 @@ public export
 FromString FilePath where
   fromString s = case split ('/' ==) s of
     "" ::: ps => FP $ PAbs $ [<]   <>< ps
-    s  ::: ps => FP $ PAbs $ [< s] <>< ps
+    s  ::: ps => FP $ PRel $ [< s] <>< ps
 
 namespace FilePath
 
@@ -154,36 +154,36 @@ namespace FilePath
   public export
   (/>) : FilePath -> String -> FilePath
   FP fp /> s = FP $ fp /> s
-  
+
   ||| Try and split a path into parent directory and
   ||| file/directory name.
   public export
   split : FilePath -> Maybe (FilePath, String)
   split (FP p) = map (\(fp,s) => (FP fp, s)) $ split p
-  
+
   ||| Append a file ending to a path. If the path is empty,
   ||| this appends a hidden file/directory by prepending the
   ||| name with a dot.
   public export
   (<.>) : FilePath -> String -> FilePath
   FP fp <.> s = FP $ fp <.> s
-  
+
   ||| The root of the file system.
   public export
   root : FilePath
   root = FP $ PAbs [<]
-  
+
   ||| Checks whether an unknown path is absolute or not.
   export
   isAbsolute : FilePath -> Bool
   isAbsolute (FP $ PAbs _) = True
   isAbsolute (FP $ PRel _) = False
-  
+
   ||| Tries to extract the parent directory from a path.
   export
   parentDir : FilePath -> Maybe FilePath
   parentDir = map fst . split
-  
+
   ||| Returns a list of parent directories of the given path.
   export
   parentDirs : FilePath -> List FilePath

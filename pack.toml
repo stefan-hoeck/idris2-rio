@@ -1,0 +1,9 @@
+[custom.all.rio]
+type   = "local"
+path   = "."
+ipkg   = "rio.ipkg"
+
+[custom.all.rio-test]
+type   = "local"
+path   = "test"
+ipkg   = "test.ipkg"
