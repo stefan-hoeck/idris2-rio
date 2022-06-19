@@ -27,7 +27,7 @@ unFocus (MkCtxt sp n ps) x = sp <>> ((n,x) :: ps)
 
 export
 focus : Eq k => k -> List (k,v) -> Maybe (Ctxt k v, v)
-focus key = go [<] 
+focus key = go [<]
   where go : SnocList (k,v) -> List (k,v) -> Maybe (Ctxt k v, v)
         go sx []        = Nothing
         go sx (x :: xs) = case fst x == key of
@@ -69,7 +69,7 @@ data PCFocus : Type where
          -> (parendDir : MockDir)
          -> (context   : SnocList (Ctxt String AnyFile))
          -> PCFocus
-  Exists :  Focus -> PCFocus 
+  Exists :  Focus -> PCFocus
 
 selfOrParent : FilePath -> FilePath
 selfOrParent fp = maybe fp fst $ split fp
@@ -219,7 +219,7 @@ fs ref = MkFS {
   , removeFile_ = \fp => mock ref (removeFile fp)
   , removeDir_  = \fp => mock ref (removeDir fp)
   , exists_     = \fp => exists fp <$> readIORef ref
-  , read_       = \fp,l => read fp l <$> readIORef ref 
+  , read_       = \fp,l => read fp l <$> readIORef ref
   , curDir_     = Right . FP . curDir <$> readIORef ref
   , changeDir_  = \fp => mock ref (changeDir fp)
   , listDir_    = \fp => listDir fp <$> readIORef ref
