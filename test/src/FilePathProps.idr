@@ -17,6 +17,7 @@ fpChar = frequency [(30, alphaNum), (1, element ['-', '_'])]
 basename : Gen String
 basename = string (linear 1 20) fpChar
 
+export
 ending : Gen String
 ending = string (linear 1 5) alphaNum
 
@@ -35,6 +36,10 @@ dir = choice [FP <$> absDir, FP <$> relDir]
 export
 file : Gen FilePath
 file = [| dir <.> ending |]
+
+export
+relativeFile : Gen FilePath
+relativeFile = [| (fromString <$> basename) <.> ending |]
 
 --------------------------------------------------------------------------------
 --          Properties
