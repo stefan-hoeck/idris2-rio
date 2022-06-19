@@ -75,6 +75,23 @@ selfOrParent : FilePath -> FilePath
 selfOrParent fp = maybe fp fst $ split fp
 
 export
+mkdirFocus : MockDir -> Path Abs -> Maybe Focus
+mkdirFocus (MkMD ps) (PAbs sx) = go [<] ps (sx <>> [])
+  where go :  SnocList (Ctxt String AnyFile)
+           -> List (String,AnyFile)
+           -> List String
+           -> Maybe Focus
+        go sx ps []        = Just $ DirF (MkMD ps) sx
+        go sx ps (x :: xs) = case focus x ps of
+          Nothing          =>
+            let c = MkCtxt Lin x Nil
+             in go (sx :< c) [] xs
+          Just (c, Left f) => case xs of
+            Nil => Just $ FileF f c sx
+            _   => Nothing
+          Just (c, Right $ MkMD ps2) => go (sx :< c) ps2 xs
+
+export
 dirFocus : MockDir -> Path Abs -> Maybe Focus
 dirFocus (MkMD ps) (PAbs sx) = go [<] ps (sx <>> [])
   where go :  SnocList (Ctxt String AnyFile)
@@ -137,6 +154,13 @@ mkDir fp fs = case pcFocus fs fp of
      in Right $ {root := dir} fs
   Just (Exists _)      => Left (MkDir fp FileExists)
   Nothing              => Left (MkDir (selfOrParent fp) FileNotFound)
+
+export
+mkDirP : FilePath -> MockFS -> Either FileErr MockFS
+mkDirP fp fs = case mkdirFocus fs.root (absPath fs fp) of
+  Just (DirF x sx) => Right $ {root := unDirFocus' x.content sx} fs
+  Just (FileF {})  => Left (MkDir fp FileExists)
+  Nothing => Left (MkDir fp FileExists)
 
 writeImpl :  FilePath
           -> String
