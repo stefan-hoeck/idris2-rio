@@ -35,7 +35,8 @@ public export
 ||| Append a file or directory to a path.
 public export
 (/>) : Path t -> String -> Path t
-fp /> s = fp </> PRel [< s]
+fp /> "" = fp
+fp /> s  = fp </> PRel [< s]
 
 ||| Try and split a path into parent directory and
 ||| file/directory name.
@@ -144,6 +145,7 @@ Interpolation FilePath where interpolate (FP p) = interpolate p
 
 public export
 FromString FilePath where
+  fromString "" = FP $ PRel Lin
   fromString s = case split ('/' ==) s of
     "" ::: ps => FP $ PAbs $ [<]   <>< ps
     s  ::: ps => FP $ PRel $ [< s] <>< ps
@@ -154,6 +156,11 @@ namespace FilePath
   public export
   (/>) : FilePath -> String -> FilePath
   FP fp /> s = FP $ fp /> s
+
+  ||| Append a relative path do a file path.
+  public export
+  (</>) : FilePath -> Path Rel -> FilePath
+  FP fp </> p = FP $ fp </> p
 
   ||| Try and split a path into parent directory and
   ||| file/directory name.
