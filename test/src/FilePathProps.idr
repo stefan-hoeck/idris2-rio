@@ -65,6 +65,11 @@ prop_appendEmpty = property $ do
   f <- forAll file
   (f /> "") === f
 
+prop_prependEmpty2 : Property
+prop_prependEmpty2 = property $ do
+  d <- forAll basename
+  ("" /> d) === fromString d
+
 --------------------------------------------------------------------------------
 --          Group
 --------------------------------------------------------------------------------
@@ -76,5 +81,6 @@ props = MkGroup "FilePath" [
       , ("prop_splitFile", prop_splitFile)
       , ("prop_roundtrip", prop_roundtrip)
       , ("prop_prependEmpty", prop_prependEmpty)
+      , ("prop_prependEmpty2", prop_prependEmpty2)
       , ("prop_appendEmpty", prop_appendEmpty)
       ]
