@@ -1,10 +1,13 @@
 module Main
 
 import Control.RIO.Mock.File
-import Hedgehog
+import FSProps
 import FilePathProps
+import Hedgehog
 
 %default total
 
 main : IO ()
-main = test [ FilePathProps.props ]
+main = test [ FilePathProps.props
+            , FSProps.props
+            ]
