@@ -81,7 +81,7 @@ record FS where
   read_   : FilePath -> Bits32 -> IO (Either FileErr String)
 
   ||| Prints the current working directory.
-  curDir_ : IO (Either FileErr FilePath)
+  curDir_ : IO (Either FileErr (Path Abs))
 
   ||| Change to the given directory
   changeDir_ : FilePath -> IO (Either FileErr ())
@@ -134,7 +134,7 @@ removeDir path = injectIO (removeDir_ %search path)
 
 ||| Returns the current directory's path.
 export
-curDir : FS => Has FileErr xs => App xs FilePath
+curDir : FS => Has FileErr xs => App xs (Path Abs)
 curDir = injectIO $ curDir_ %search
 
 ||| Changes the working directory
@@ -152,7 +152,7 @@ inDir :  FS
       -> App xs a
 inDir dir act = do
   cur <- curDir
-  finally (chgDir cur) (chgDir dir >> act)
+  finally (chgDir $ FP cur) (chgDir dir >> act)
 
 ||| List entries in a directory (without `.` and `..`)
 export
@@ -206,10 +206,12 @@ readImpl fp limit = do
 
       False => pure (Left $ LimitExceeded fp limit)
 
-curDirImpl : IO (Either FileErr FilePath)
+curDirImpl : IO (Either FileErr (Path Abs))
 curDirImpl = do
   Just s <- currentDir | Nothing => pure (Left CurDir)
-  pure . Right $ fromString s
+  case fromString {ty = FilePath} s of
+    (FP p@(PAbs {})) => pure (Right p)
+    _                => pure (Left CurDir)
 
 changeDirImpl : FilePath -> IO (Either FileErr ())
 changeDirImpl dir = do

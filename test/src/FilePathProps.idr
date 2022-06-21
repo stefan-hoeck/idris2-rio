@@ -1,7 +1,9 @@
 module FilePathProps
 
+import Data.DPair
 import Data.FilePath
 import Data.SOP
+import Data.String
 import Data.Vect
 import Hedgehog
 
@@ -11,23 +13,29 @@ import Hedgehog
 --          Generators
 --------------------------------------------------------------------------------
 
+toNoSep : String -> Subset String NoSep
+toNoSep = fromMaybe (Element "path" Refl) . noSep
+
 fpChar : Gen Char
 fpChar = frequency [(30, alphaNum), (1, element ['-', '_'])]
 
-basename : Gen String
-basename = string (linear 1 20) fpChar
+body' : Gen String
+body' = string (linear 1 20) fpChar
+
+body : Gen (Subset String NoSep)
+body = map toNoSep body'
 
 export
-ending : Gen String
-ending = string (linear 1 5) alphaNum
+ending : Gen (Subset String NoSep)
+ending = toNoSep <$> string (linear 1 5) alphaNum
 
 export
 relDir : Gen (Path Rel)
-relDir = PRel . (Lin <><) <$> list (linear 0 6) basename
+relDir = PRel 0 . (Lin <><) <$> list (linear 0 6) body'
 
 export
 absDir : Gen (Path Abs)
-absDir = PAbs . (Lin <><) <$> list (linear 0 6) basename
+absDir = PAbs . (Lin <><) <$> list (linear 0 6) body'
 
 export
 dir : Gen FilePath
@@ -39,7 +47,7 @@ file = [| dir <.> ending |]
 
 export
 relativeFile : Gen FilePath
-relativeFile = [| (fromString <$> basename) <.> ending |]
+relativeFile = [| (fromString <$> body') <.> ending |]
 
 --------------------------------------------------------------------------------
 --          Properties
@@ -47,12 +55,12 @@ relativeFile = [| (fromString <$> basename) <.> ending |]
 
 prop_split : Property
 prop_split = property $ do
-  [d,n] <- forAll $ np [dir,basename]
+  [d, Element n _] <- forAll $ np [dir,body]
   split (d /> n) === Just (d,n)
 
 prop_splitFile : Property
 prop_splitFile = property $ do
-  [d,n,e] <- forAll $ np [dir,basename,ending]
+  [d, Element n _,Element e _] <- forAll $ np [dir,body,ending]
   split ((d /> n) <.> e) === Just (d,"\{n}.\{e}")
 
 prop_roundtrip : Property
@@ -72,7 +80,7 @@ prop_appendEmpty = property $ do
 
 prop_prependEmpty2 : Property
 prop_prependEmpty2 = property $ do
-  d <- forAll basename
+  Element d _ <- forAll body
   ("" /> d) === fromString d
 
 --------------------------------------------------------------------------------
