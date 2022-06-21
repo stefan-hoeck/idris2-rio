@@ -125,8 +125,8 @@ record MockFS where
   curDir : Path Abs
 
 absPath : MockFS -> FilePath -> Path Abs
-absPath fs (FP $ PAbs sx) = PAbs sx
-absPath fs (FP $ PRel sx) = fs.curDir </> PRel sx
+absPath fs (FP $ PAbs sx)   = PAbs sx
+absPath fs (FP $ PRel n sx) = fs.curDir </> PRel n sx
 
 export
 fsFocus : MockFS -> FilePath -> Maybe Focus
@@ -244,7 +244,7 @@ fs ref = MkFS {
   , removeDir_  = \fp => mock ref (removeDir fp)
   , exists_     = \fp => exists fp <$> readIORef ref
   , read_       = \fp,l => read fp l <$> readIORef ref
-  , curDir_     = Right . FP . curDir <$> readIORef ref
+  , curDir_     = Right . curDir <$> readIORef ref
   , changeDir_  = \fp => mock ref (changeDir fp)
   , listDir_    = \fp => listDir fp <$> readIORef ref
   , mkDir_      = \fp => mock ref (mkDir fp)
