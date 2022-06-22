@@ -47,7 +47,7 @@ data MockFile : Type where
 public export
 record MockDir where
   constructor MkMD
-  content : List (String, Either MockFile MockDir)
+  content : List (Body, Either MockFile MockDir)
 
 public export
 0 AnyFile : Type
@@ -56,18 +56,18 @@ AnyFile = Either MockFile MockDir
 public export
 data Focus : Type where
   FileF :  MockFile
-        -> Ctxt String AnyFile
-        -> SnocList (Ctxt String AnyFile)
+        -> Ctxt Body AnyFile
+        -> SnocList (Ctxt Body AnyFile)
         -> Focus
   DirF  :  MockDir
-        -> SnocList (Ctxt String AnyFile)
+        -> SnocList (Ctxt Body AnyFile)
         -> Focus
 
 public export
 data PCFocus : Type where
-  Parent :  (child     : String)
+  Parent :  (child     : Body)
          -> (parendDir : MockDir)
-         -> (context   : SnocList (Ctxt String AnyFile))
+         -> (context   : SnocList (Ctxt Body AnyFile))
          -> PCFocus
   Exists :  Focus -> PCFocus
 
@@ -77,9 +77,9 @@ selfOrParent fp = maybe fp fst $ split fp
 export
 mkdirFocus : MockDir -> Path Abs -> Maybe Focus
 mkdirFocus (MkMD ps) (PAbs sx) = go [<] ps (sx <>> [])
-  where go :  SnocList (Ctxt String AnyFile)
-           -> List (String,AnyFile)
-           -> List String
+  where go :  SnocList (Ctxt Body AnyFile)
+           -> List (Body,AnyFile)
+           -> List Body
            -> Maybe Focus
         go sx ps []        = Just $ DirF (MkMD ps) sx
         go sx ps (x :: xs) = case focus x ps of
@@ -94,9 +94,9 @@ mkdirFocus (MkMD ps) (PAbs sx) = go [<] ps (sx <>> [])
 export
 dirFocus : MockDir -> Path Abs -> Maybe Focus
 dirFocus (MkMD ps) (PAbs sx) = go [<] ps (sx <>> [])
-  where go :  SnocList (Ctxt String AnyFile)
-           -> List (String,AnyFile)
-           -> List String
+  where go :  SnocList (Ctxt Body AnyFile)
+           -> List (Body,AnyFile)
+           -> List Body
            -> Maybe Focus
         go sx ps []        = Just $ DirF (MkMD ps) sx
         go sx ps (x :: xs) = case focus x ps of
@@ -106,8 +106,8 @@ dirFocus (MkMD ps) (PAbs sx) = go [<] ps (sx <>> [])
             _   => Nothing
           Just (c, Right $ MkMD ps2) => go (sx :< c) ps2 xs
 
-unDirFocus' :  List (String, AnyFile)
-            -> SnocList (Ctxt String AnyFile)
+unDirFocus' :  List (Body, AnyFile)
+            -> SnocList (Ctxt Body AnyFile)
             -> MockDir
 unDirFocus' xs [<]       = MkMD xs
 unDirFocus' xs (sx :< x) = unDirFocus' (unFocus x . Right $ MkMD xs) sx
@@ -125,8 +125,8 @@ record MockFS where
   curDir : Path Abs
 
 absPath : MockFS -> FilePath -> Path Abs
-absPath fs (FP $ PAbs sx)   = PAbs sx
-absPath fs (FP $ PRel n sx) = fs.curDir </> PRel n sx
+absPath fs (FP $ PAbs sx) = PAbs sx
+absPath fs (FP $ PRel sx) = fs.curDir </> PRel sx
 
 export
 fsFocus : MockFS -> FilePath -> Maybe Focus
@@ -220,9 +220,9 @@ changeDir fp fs = case fsFocus fs fp of
   Nothing             => Left (ChangeDir fp)
 
 export
-listDir : FilePath -> MockFS -> (Either FileErr $ List FilePath)
+listDir : FilePath -> MockFS -> (Either FileErr $ List Body)
 listDir fp fs = case fsFocus fs fp of
-  Just (DirF x _)    => Right $ map (fromString . fst) x.content
+  Just (DirF x _)    => Right $ map fst x.content
   Just (FileF _ _ _) => Left (ListDir fp FileReadError)
   Nothing            => Left (ListDir fp FileNotFound)
 

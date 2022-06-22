@@ -87,7 +87,7 @@ record FS where
   changeDir_ : FilePath -> IO (Either FileErr ())
 
   ||| List entries in a directory (without `.` and `..`)
-  listDir_ : FilePath -> IO (Either FileErr (List FilePath))
+  listDir_ : FilePath -> IO (Either FileErr (List Body))
 
   ||| Creates the given directory
   mkDir_ : FilePath -> IO (Either FileErr ())
@@ -98,39 +98,75 @@ record FS where
 
 ||| True if the given file exists in the file system
 export
-exists : FS => FilePath -> RIO x Bool
-exists path = liftIO (exists_ %search path)
+exists' : FS => FilePath -> RIO x Bool
+exists' path = liftIO (exists_ %search path)
+
+||| True if the given file exists in the file system
+export %inline
+exists : FS => Path Abs -> RIO x Bool
+exists = exists' . FP
 
 ||| True if the given file does not exist in the file system
 export
-missing : FS => FilePath -> RIO x Bool
-missing = map not . exists
+missing' : FS => FilePath -> RIO x Bool
+missing' = map not . exists'
+
+||| True if the given file does not exist in the file system
+export
+missing : FS => Path Abs -> RIO x Bool
+missing = missing' . FP
 
 ||| Writes the given string to a file.
 export
-write : FS => Has FileErr xs => FilePath -> String -> App xs ()
-write path str = injectIO (write_ %search path str)
+write' : FS => Has FileErr xs => FilePath -> String -> App xs ()
+write' path str = injectIO (write_ %search path str)
+
+||| Writes the given string to a file.
+export %inline
+write : FS => Has FileErr xs => Path Abs -> String -> App xs ()
+write = write' . FP
 
 ||| Writes the given string to a file.
 export
-append : FS => Has FileErr xs => FilePath -> String -> App xs ()
-append path str = injectIO (append_ %search path str)
+append' : FS => Has FileErr xs => FilePath -> String -> App xs ()
+append' path str = injectIO (append_ %search path str)
+
+||| Writes the given string to a file.
+export %inline
+append : FS => Has FileErr xs => Path Abs -> String -> App xs ()
+append = append' . FP
 
 ||| Reads a string from a file, the size of which must not
 ||| exceed the given number of bytes.
 export
-read : FS => Has FileErr xs => FilePath -> Bits32 -> App xs String
-read path limit = injectIO (read_ %search path limit)
+read' : FS => Has FileErr xs => FilePath -> Bits32 -> App xs String
+read' path limit = injectIO (read_ %search path limit)
+
+||| Reads a string from a file, the size of which must not
+||| exceed the given number of bytes.
+export %inline
+read : FS => Has FileErr xs => Path Abs -> Bits32 -> App xs String
+read = read' . FP
 
 ||| Delete a file from the file system.
 export
-removeFile : FS => Has FileErr xs => FilePath -> App xs ()
-removeFile path = injectIO (removeFile_ %search path)
+removeFile' : FS => Has FileErr xs => FilePath -> App xs ()
+removeFile' path = injectIO (removeFile_ %search path)
+
+||| Delete a file from the file system.
+export %inline
+removeFile : FS => Has FileErr xs => Path Abs -> App xs ()
+removeFile = removeFile' . FP
 
 ||| Delete a file from the file system.
 export
-removeDir : FS => Has FileErr xs => FilePath -> App xs ()
-removeDir path = injectIO (removeDir_ %search path)
+removeDir' : FS => Has FileErr xs => FilePath -> App xs ()
+removeDir' path = injectIO (removeDir_ %search path)
+
+||| Delete a file from the file system.
+export %inline
+removeDir : FS => Has FileErr xs => Path Abs -> App xs ()
+removeDir = removeDir' . FP
 
 ||| Returns the current directory's path.
 export
@@ -139,43 +175,78 @@ curDir = injectIO $ curDir_ %search
 
 ||| Changes the working directory
 export
-chgDir : FS => Has FileErr xs => (dir : FilePath) -> App xs ()
-chgDir dir = injectIO (changeDir_ %search dir)
+chgDir' : FS => Has FileErr xs => (dir : FilePath) -> App xs ()
+chgDir' dir = injectIO (changeDir_ %search dir)
+
+||| Changes the working directory
+export %inline
+chgDir : FS => Has FileErr xs => (dir : Path Abs) -> App xs ()
+chgDir = chgDir' . FP
 
 ||| Runs an action in the given directory, changing back
 ||| to the current directory afterwards.
 export
+inDir' :  FS
+       => Has FileErr xs
+       => (dir : FilePath)
+       -> (act : App xs a)
+       -> App xs a
+inDir' dir act = do
+  cur <- curDir
+  finally (chgDir cur) (chgDir' dir >> act)
+
+||| Runs an action in the given directory, changing back
+||| to the current directory afterwards.
+export %inline
 inDir :  FS
       => Has FileErr xs
-      => (dir : FilePath)
+      => (dir : Path Abs)
       -> (act : App xs a)
       -> App xs a
-inDir dir act = do
-  cur <- curDir
-  finally (chgDir $ FP cur) (chgDir dir >> act)
+inDir = inDir' . FP
 
 ||| List entries in a directory (without `.` and `..`)
 export
-listDir : FS => Has FileErr xs => FilePath -> App xs (List FilePath)
-listDir dir = injectIO (listDir_ %search dir)
+listDir' : FS => Has FileErr xs => FilePath -> App xs (List Body)
+listDir' dir = injectIO (listDir_ %search dir)
+
+||| List entries in a directory (without `.` and `..`)
+export %inline
+listDir : FS => Has FileErr xs => Path Abs -> App xs (List Body)
+listDir = listDir' . FP
 
 ||| Creates the given directory
 export
-mkDir : FS => Has FileErr xs => FilePath -> App xs ()
-mkDir dir = injectIO (mkDir_ %search dir)
+mkDir' : FS => Has FileErr xs => FilePath -> App xs ()
+mkDir' dir = injectIO (mkDir_ %search dir)
+
+||| Creates the given directory
+export %inline
+mkDir : FS => Has FileErr xs => Path Abs -> App xs ()
+mkDir = mkDir' . FP
 
 ||| Creates the given directory (including parent directories)
 export
-mkDirP : FS => Has FileErr xs => FilePath -> App xs ()
-mkDirP dir = go (parentDirs dir) >> mkDir dir
+mkDirP' : FS => Has FileErr xs => FilePath -> App xs ()
+mkDirP' dir = go (parentDirs dir) >> mkDir' dir
   where go : List FilePath -> App xs ()
         go []        = pure ()
-        go (x :: xs) = when !(missing x) $ go xs >> mkDir x
+        go (x :: xs) = when !(missing' x) $ go xs >> mkDir' x
+
+||| Creates the given directory (including parent directories)
+export %inline
+mkDirP : FS => Has FileErr xs => Path Abs -> App xs ()
+mkDirP = mkDirP' . FP
 
 ||| Creates the parent directory of the given file
 export
-mkParentDir : FS => Has FileErr xs => FilePath -> App xs ()
-mkParentDir = traverse_ mkDirP . parentDir
+mkParentDir' : FS => Has FileErr xs => FilePath -> App xs ()
+mkParentDir' = traverse_ mkDirP' . parentDir
+
+||| Creates the parent directory of the given file
+export %inline
+mkParentDir : FS => Has FileErr xs => Path Abs -> App xs ()
+mkParentDir = mkParentDir' . FP
 
 --------------------------------------------------------------------------------
 --          Default FS
@@ -218,8 +289,8 @@ changeDirImpl dir = do
   True <- changeDir "\{dir}" | False => pure (Left $ ChangeDir dir)
   pure $ Right ()
 
-listDirImpl : FilePath -> IO (Either FileErr $ List FilePath)
-listDirImpl dir = bimap (ListDir dir) (map fromString) <$> listDir "\{dir}"
+listDirImpl : FilePath -> IO (Either FileErr $ List Body)
+listDirImpl dir = bimap (ListDir dir) (mapMaybe body) <$> listDir "\{dir}"
 
 mkDirImpl : FilePath -> IO (Either FileErr ())
 mkDirImpl dir = mapFst (MkDir dir) <$> createDir "\{dir}"

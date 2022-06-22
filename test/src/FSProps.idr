@@ -3,8 +3,9 @@ module FSProps
 import Control.RIO.File
 import Control.RIO.Mock.File
 import Data.FilePath
+import Data.Maybe
 import Data.SOP
-import FilePathProps
+import Data.Vect
 import Hedgehog
 
 %default total
@@ -30,6 +31,39 @@ Show FileErr where show = printErr
 --------------------------------------------------------------------------------
 --          Generators
 --------------------------------------------------------------------------------
+
+bodyChar : Gen Char
+bodyChar = frequency [(30, alphaNum), (1, element ['-', '_', '.'])]
+
+body' : Gen String
+body' = string (linear 1 20) bodyChar
+
+body : Gen Body
+body = fromMaybe "body" . body <$> body'
+
+export
+ending : Gen Body
+ending = fromMaybe "txt" . body <$> string (linear 1 5) alphaNum
+
+export
+relDir : Gen (Path Rel)
+relDir = PRel . (Lin <><) <$> list (linear 0 6) body
+
+export
+absDir : Gen (Path Abs)
+absDir = PAbs . (Lin <><) <$> list (linear 0 6) body
+
+export
+dir : Gen FilePath
+dir = choice [FP <$> absDir, FP <$> relDir]
+
+export
+file : Gen FilePath
+file = [| dir <.> ending |]
+
+export
+relativeFile : Gen FilePath
+relativeFile = [| (fromString <$> body') <.> ending |]
 
 mockFS : Gen MockFS
 mockFS = toFS (MkMockFS (MkMD []) root) <$> list (linear 0 20) dir
