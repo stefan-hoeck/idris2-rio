@@ -25,10 +25,12 @@ jobs:
       PACK_DIR: /root/.pack
     strategy:
       fail-fast: false
-    container: ghcr.io/stefan-hoeck/idris2-pack:nightly-220622
+    container: ghcr.io/stefan-hoeck/idris2-pack:latest
     steps:
       - name: Checkout
         uses: actions/checkout@v2
+      - name: Info
+        run: pack info
       - name: Build lib
         run: pack install rio
       - name: Run test
