@@ -65,23 +65,24 @@ export
 fail : x -> RIO x a
 fail err = liftEither (Left err)
 
+%inline
 bindApp : RIO x a -> (a -> RIO x b) -> RIO x b
 bindApp app f = Chain app (either fail f)
 
-export %inline
+export
 Functor (RIO x) where
   map = mapApp . map
 
-export %inline
+export
 Bifunctor RIO where
   bimap f g = mapApp (bimap f g)
 
-export %inline
+export
 Applicative (RIO x) where
   pure v    = liftEither (Right v)
   af <*> aa = bindApp af (\f => map f aa)
 
-export %inline
+export
 Monad (RIO x) where
   (>>=) = bindApp
 
