@@ -60,13 +60,13 @@ Monoid Logger where
   neutral = MkLogger $ \_,_ => pure ()
 
 export
-consoleLogger : Console -> (LogLevel -> Lazy String -> String) -> Logger
+consoleLogger : ConsoleOut -> (LogLevel -> Lazy String -> String) -> Logger
 consoleLogger c f = MkLogger $ \l,s => case l of
   Error => c.putErr_ (f l s ++ "\n")
   _     => c.putStr_ (f l s ++ "\n")
 
 export
-basicConsoleLogger : Console -> Logger
+basicConsoleLogger : ConsoleOut -> Logger
 basicConsoleLogger c = consoleLogger c $ \l,s => "[\{l}] \{s}"
 
 col : LogLevel -> String
@@ -77,7 +77,7 @@ col Warning = show $ colored Yellow "warning"
 col Error   = show $ colored Red "error"
 
 export
-colorConsoleLogger : Console -> Logger
+colorConsoleLogger : ConsoleOut -> Logger
 colorConsoleLogger c = consoleLogger c $ \l,s => "[\{col l}] \{s}"
 
 --------------------------------------------------------------------------------
