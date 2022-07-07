@@ -50,35 +50,35 @@ record MockDir where
   content : List (Body, Either MockFile MockDir)
 
 public export
-0 AnyFile : Type
-AnyFile = Either MockFile MockDir
+0 AFile : Type
+AFile = Either MockFile MockDir
 
 public export
 data Focus : Type where
   FileF :  MockFile
-        -> Ctxt Body AnyFile
-        -> SnocList (Ctxt Body AnyFile)
+        -> Ctxt Body AFile
+        -> SnocList (Ctxt Body AFile)
         -> Focus
   DirF  :  MockDir
-        -> SnocList (Ctxt Body AnyFile)
+        -> SnocList (Ctxt Body AFile)
         -> Focus
 
 public export
 data PCFocus : Type where
   Parent :  (child     : Body)
          -> (parendDir : MockDir)
-         -> (context   : SnocList (Ctxt Body AnyFile))
+         -> (context   : SnocList (Ctxt Body AFile))
          -> PCFocus
   Exists :  Focus -> PCFocus
 
-selfOrParent : FilePath -> FilePath
+selfOrParent : Path t -> Path t
 selfOrParent fp = maybe fp fst $ split fp
 
 export
 mkdirFocus : MockDir -> Path Abs -> Maybe Focus
 mkdirFocus (MkMD ps) (PAbs sx) = go [<] ps (sx <>> [])
-  where go :  SnocList (Ctxt Body AnyFile)
-           -> List (Body,AnyFile)
+  where go :  SnocList (Ctxt Body AFile)
+           -> List (Body,AFile)
            -> List Body
            -> Maybe Focus
         go sx ps []        = Just $ DirF (MkMD ps) sx
@@ -94,8 +94,8 @@ mkdirFocus (MkMD ps) (PAbs sx) = go [<] ps (sx <>> [])
 export
 dirFocus : MockDir -> Path Abs -> Maybe Focus
 dirFocus (MkMD ps) (PAbs sx) = go [<] ps (sx <>> [])
-  where go :  SnocList (Ctxt Body AnyFile)
-           -> List (Body,AnyFile)
+  where go :  SnocList (Ctxt Body AFile)
+           -> List (Body,AFile)
            -> List Body
            -> Maybe Focus
         go sx ps []        = Just $ DirF (MkMD ps) sx
@@ -106,8 +106,8 @@ dirFocus (MkMD ps) (PAbs sx) = go [<] ps (sx <>> [])
             _   => Nothing
           Just (c, Right $ MkMD ps2) => go (sx :< c) ps2 xs
 
-unDirFocus' :  List (Body, AnyFile)
-            -> SnocList (Ctxt Body AnyFile)
+unDirFocus' :  List (Body, AFile)
+            -> SnocList (Ctxt Body AFile)
             -> MockDir
 unDirFocus' xs [<]       = MkMD xs
 unDirFocus' xs (sx :< x) = unDirFocus' (unFocus x . Right $ MkMD xs) sx
@@ -124,15 +124,15 @@ record MockFS where
   root   : MockDir
   curDir : Path Abs
 
-absPath : MockFS -> FilePath -> Path Abs
-absPath fs (FP $ PAbs sx) = PAbs sx
-absPath fs (FP $ PRel sx) = fs.curDir </> PRel sx
+absPath : MockFS -> Path t -> Path Abs
+absPath fs (PAbs sx) = PAbs sx
+absPath fs (PRel sx) = fs.curDir </> PRel sx
 
 export
-fsFocus : MockFS -> FilePath -> Maybe Focus
+fsFocus : MockFS -> Path t -> Maybe Focus
 fsFocus fs = dirFocus fs.root . absPath fs
 
-pcFocus : MockFS -> FilePath -> Maybe PCFocus
+pcFocus : MockFS -> Path t -> Maybe PCFocus
 pcFocus fs fp = case fsFocus fs fp of
   Just f  => Just (Exists f)
   Nothing => case split fp of
@@ -142,11 +142,11 @@ pcFocus fs fp = case fsFocus fs fp of
     Nothing    => Nothing
 
 export
-exists : FilePath -> MockFS -> Bool
+exists : Path t -> MockFS -> Bool
 exists fp fs = isJust $ fsFocus fs fp
 
 export
-mkDir : FilePath -> MockFS -> Either FileErr MockFS
+mkDir : Path t -> MockFS -> Either FileErr MockFS
 mkDir fp fs = case pcFocus fs fp of
   Just (Parent c d sx) =>
     let empty := (c, Right $ MkMD [])
@@ -156,17 +156,17 @@ mkDir fp fs = case pcFocus fs fp of
   Nothing              => Left (MkDir (selfOrParent fp) FileNotFound)
 
 export
-mkDirP : FilePath -> MockFS -> Either FileErr MockFS
+mkDirP : Path t -> MockFS -> Either FileErr MockFS
 mkDirP fp fs = case mkdirFocus fs.root (absPath fs fp) of
   Just (DirF x sx) => Right $ {root := unDirFocus' x.content sx} fs
   Just (FileF {})  => Left (MkDir fp FileExists)
   Nothing => Left (MkDir fp FileExists)
 
-writeImpl :  FilePath
+writeImpl :  File t
           -> String
           -> (String -> String)
           -> MockFS -> Either FileErr MockFS
-writeImpl fp s f fs = case pcFocus fs fp of
+writeImpl fp s f fs = case pcFocus fs $ toPath fp of
   Just (Parent c d sx) =>
     let empty := (c, Left $ Regular s)
         dir   := unDirFocus' (empty :: d.content) sx
@@ -174,27 +174,27 @@ writeImpl fp s f fs = case pcFocus fs fp of
   Just (Exists (FileF (Regular x) d sx)) =>
     let dir   := unDirFocus $ FileF (Regular $ f x) d sx
      in Right $ {root := dir} fs
-  Just (Exists _) => Left (WriteErr (selfOrParent fp) FileExists)
-  Nothing         => Left (WriteErr (selfOrParent fp) FileNotFound)
+  Just (Exists _) => Left (WriteErr fp FileExists)
+  Nothing         => Left (WriteErr fp FileNotFound)
 
 export
-write : FilePath -> String -> MockFS -> Either FileErr MockFS
+write : File t -> String -> MockFS -> Either FileErr MockFS
 write fp s = writeImpl fp s (const s)
 
 export
-append : FilePath -> String -> MockFS -> Either FileErr MockFS
+append : File t -> String -> MockFS -> Either FileErr MockFS
 append fp s = writeImpl fp s (++ s)
 
 export
-removeFile : FilePath -> MockFS -> Either FileErr MockFS
-removeFile fp fs = case fsFocus fs fp of
+removeFile : File t -> MockFS -> Either FileErr MockFS
+removeFile fp fs = case fsFocus fs $ toPath fp of
   Just (FileF _ (MkCtxt start _ end) sx) =>
     Right $ {root := unDirFocus' (start <>> end) sx} fs
-  Nothing             => Left $ DeleteErr fp FileNotFound
-  Just (DirF {})      => Left $ DeleteErr fp FileNotFound
+  Nothing             => Left $ DeleteErr (toPath fp) FileNotFound
+  Just (DirF {})      => Left $ DeleteErr (toPath fp) FileNotFound
 
 export
-removeDir : FilePath -> MockFS -> Either FileErr MockFS
+removeDir : Path t -> MockFS -> Either FileErr MockFS
 removeDir fp fs = case fsFocus fs fp of
   Just (DirF (MkMD []) (sx :< (MkCtxt start _ end))) =>
     Right $ {root := unDirFocus' (start <>> end) sx} fs
@@ -203,8 +203,8 @@ removeDir fp fs = case fsFocus fs fp of
   Nothing                  => Left $ DeleteErr fp FileNotFound
 
 export
-read : FilePath -> Bits32 -> MockFS -> Either FileErr String
-read fp ms fs = case fsFocus fs fp of
+read : File t -> Bits32 -> MockFS -> Either FileErr String
+read fp ms fs = case fsFocus fs $ toPath fp of
   Just (FileF (Regular x) _ _)   => case length x <= cast ms of
     True  => Right x
     False => Left (LimitExceeded fp ms)
@@ -213,14 +213,14 @@ read fp ms fs = case fsFocus fs fp of
   Nothing  => Left (ReadErr fp FileNotFound)
 
 export
-changeDir : FilePath -> MockFS -> Either FileErr MockFS
+changeDir : Path t -> MockFS -> Either FileErr MockFS
 changeDir fp fs = case fsFocus fs fp of
   Just (DirF x sx)    => Right $ {curDir := absPath fs fp} fs
   Just (FileF x y sx) => Left (ChangeDir fp)
   Nothing             => Left (ChangeDir fp)
 
 export
-listDir : FilePath -> MockFS -> (Either FileErr $ List Body)
+listDir : Path t -> MockFS -> (Either FileErr $ List Body)
 listDir fp fs = case fsFocus fs fp of
   Just (DirF x _)    => Right $ map fst x.content
   Just (FileF _ _ _) => Left (ListDir fp FileReadError)
@@ -238,14 +238,14 @@ mock ref f = do
 export
 fs : IORef MockFS -> FS
 fs ref = MkFS {
-    write_      = \fp,s => mock ref (write fp s)
-  , append_     = \fp,s => mock ref (append fp s)
-  , removeFile_ = \fp => mock ref (removeFile fp)
-  , removeDir_  = \fp => mock ref (removeDir fp)
-  , exists_     = \fp => exists fp <$> readIORef ref
-  , read_       = \fp,l => read fp l <$> readIORef ref
+    write_      = \_,fp,s => mock ref (write fp s)
+  , append_     = \_,fp,s => mock ref (append fp s)
+  , removeFile_ = \_,fp => mock ref (removeFile fp)
+  , removeDir_  = \_,fp => mock ref (removeDir fp)
+  , exists_     = \_,fp => exists fp <$> readIORef ref
+  , read_       = \_,fp,l => read fp l <$> readIORef ref
   , curDir_     = Right . curDir <$> readIORef ref
-  , changeDir_  = \fp => mock ref (changeDir fp)
-  , listDir_    = \fp => listDir fp <$> readIORef ref
-  , mkDir_      = \fp => mock ref (mkDir fp)
+  , changeDir_  = \_,fp => mock ref (changeDir fp)
+  , listDir_    = \_,fp => listDir fp <$> readIORef ref
+  , mkDir_      = \_,fp => mock ref (mkDir fp)
   }

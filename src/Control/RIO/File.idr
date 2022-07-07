@@ -1,7 +1,8 @@
 module Control.RIO.File
 
 import public Control.RIO.App
-import public Data.FilePath
+import public Data.FilePath.File
+import public Data.DPair
 import public Data.List
 import Data.List1
 import Data.IORef
@@ -17,21 +18,21 @@ import System.File
 
 public export
 data FileErr : Type where
-  ReadErr       : (path : FilePath) -> (error : FileError) -> FileErr
+  ReadErr       : (path : File t) -> (error : FileError) -> FileErr
 
-  WriteErr      : (path : FilePath) -> (error : FileError) -> FileErr
+  WriteErr      : (path : File t) -> (error : FileError) -> FileErr
 
-  DeleteErr     : (path : FilePath) -> (error : FileError) -> FileErr
+  DeleteErr     : (path : Path t) -> (error : FileError) -> FileErr
 
-  LimitExceeded : (path : FilePath) -> (limit : Bits32) -> FileErr
+  LimitExceeded : (path : File t) -> (limit : Bits32) -> FileErr
 
   CurDir        : FileErr
 
-  ChangeDir     : FilePath -> FileErr
+  ChangeDir     : Path t -> FileErr
 
-  ListDir       : FilePath -> FileError -> FileErr
+  ListDir       : Path t -> FileError -> FileErr
 
-  MkDir         : FilePath -> FileError -> FileErr
+  MkDir         : Path t -> FileError -> FileErr
 
 export
 printErr : FileErr -> String
@@ -60,113 +61,87 @@ public export
 record FS where
   constructor MkFS
   ||| Writes the string to the file in question
-  write_  : FilePath -> String -> IO (Either FileErr ())
+  write_  : (0 t : _) -> File t -> String -> IO (Either FileErr ())
 
   ||| Appends the string to the file in question
-  append_ : FilePath -> String -> IO (Either FileErr ())
+  append_ : (0 t : _) -> File t -> String -> IO (Either FileErr ())
 
   ||| Deletes the given file.
-  removeFile_ : FilePath -> IO (Either FileErr ())
+  removeFile_ : (0 t : _) -> File t -> IO (Either FileErr ())
 
   ||| Deletes the given directory.
-  removeDir_ : FilePath -> IO (Either FileErr ())
+  removeDir_ : (0 t : _) -> Path t -> IO (Either FileErr ())
 
   ||| Checks if the given file exists in the file system
-  exists_ : FilePath -> IO Bool
+  exists_ : (0 t : _) -> Path t -> IO Bool
 
   ||| This tries to read a file in whole, so we have to limit
   ||| the acceptable file size, otherwise this might overflow
   ||| the computer's memory if presented with an infinite stream
   ||| such as `/dev/zero`
-  read_   : FilePath -> Bits32 -> IO (Either FileErr String)
+  read_   : (0 t : _) -> File t -> Bits32 -> IO (Either FileErr String)
 
   ||| Prints the current working directory.
   curDir_ : IO (Either FileErr (Path Abs))
 
   ||| Change to the given directory
-  changeDir_ : FilePath -> IO (Either FileErr ())
+  changeDir_ : (0 t : _) -> Path t -> IO (Either FileErr ())
 
   ||| List entries in a directory (without `.` and `..`)
-  listDir_ : FilePath -> IO (Either FileErr (List Body))
+  listDir_ : (0 t : _) -> Path t -> IO (Either FileErr (List Body))
 
   ||| Creates the given directory
-  mkDir_ : FilePath -> IO (Either FileErr ())
+  mkDir_ : (0 t : _) -> Path t -> IO (Either FileErr ())
 
 --------------------------------------------------------------------------------
 --          Interface
 --------------------------------------------------------------------------------
 
-||| True if the given file exists in the file system
+||| True if the given file or directory exists in the file system
 export
-exists' : FS => FilePath -> RIO x Bool
-exists' path = liftIO (exists_ %search path)
+exists : FS => Path t -> RIO x Bool
+exists path = liftIO (exists_ %search t path)
 
 ||| True if the given file exists in the file system
 export %inline
-exists : FS => Path Abs -> RIO x Bool
-exists = exists' . FP
+fileExists : FS => File t -> RIO x Bool
+fileExists = exists . toPath
+
+||| True if the given file or directory does not exist in the file system
+export %inline
+missing : FS => Path t -> RIO x Bool
+missing = map not . exists
 
 ||| True if the given file does not exist in the file system
-export
-missing' : FS => FilePath -> RIO x Bool
-missing' = map not . exists'
-
-||| True if the given file does not exist in the file system
-export
-missing : FS => Path Abs -> RIO x Bool
-missing = missing' . FP
-
-||| Writes the given string to a file.
-export
-write' : FS => Has FileErr xs => FilePath -> String -> App xs ()
-write' path str = injectIO (write_ %search path str)
-
-||| Writes the given string to a file.
 export %inline
-write : FS => Has FileErr xs => Path Abs -> String -> App xs ()
-write = write' . FP
+fileMissing : FS => File t -> RIO x Bool
+fileMissing = missing . toPath
 
 ||| Writes the given string to a file.
 export
-append' : FS => Has FileErr xs => FilePath -> String -> App xs ()
-append' path str = injectIO (append_ %search path str)
+write : FS => Has FileErr xs => File t -> String -> App xs ()
+write path str = injectIO (write_ %search t path str)
 
 ||| Writes the given string to a file.
-export %inline
-append : FS => Has FileErr xs => Path Abs -> String -> App xs ()
-append = append' . FP
+export
+append : FS => Has FileErr xs => File t -> String -> App xs ()
+append path str = injectIO (append_ %search t path str)
 
 ||| Reads a string from a file, the size of which must not
 ||| exceed the given number of bytes.
 export
-read' : FS => Has FileErr xs => FilePath -> Bits32 -> App xs String
-read' path limit = injectIO (read_ %search path limit)
-
-||| Reads a string from a file, the size of which must not
-||| exceed the given number of bytes.
-export %inline
-read : FS => Has FileErr xs => Path Abs -> Bits32 -> App xs String
-read = read' . FP
+read : FS => Has FileErr xs => File t -> Bits32 -> App xs String
+read path limit = injectIO (read_ %search t path limit)
 
 ||| Delete a file from the file system.
 export
-removeFile' : FS => Has FileErr xs => FilePath -> App xs ()
-removeFile' path = injectIO (removeFile_ %search path)
-
-||| Delete a file from the file system.
-export %inline
-removeFile : FS => Has FileErr xs => Path Abs -> App xs ()
-removeFile = removeFile' . FP
+removeFile : FS => Has FileErr xs => File t -> App xs ()
+removeFile path = injectIO (removeFile_ %search t path)
 
 ||| Delete a file from the file system.
 export
-removeDir' : FS => Has FileErr xs => FilePath -> App xs ()
-removeDir' path = injectIO (removeDir_ %search path)
-
-||| Delete a file from the file system.
-export %inline
-removeDir : FS => Has FileErr xs => Path Abs -> App xs ()
-removeDir = removeDir' . FP
+removeDir : FS => Has FileErr xs => Path t -> App xs ()
+removeDir path = injectIO (removeDir_ %search t path)
 
 ||| Returns the current directory's path.
 export
@@ -175,97 +150,62 @@ curDir = injectIO $ curDir_ %search
 
 ||| Changes the working directory
 export
-chgDir' : FS => Has FileErr xs => (dir : FilePath) -> App xs ()
-chgDir' dir = injectIO (changeDir_ %search dir)
-
-||| Changes the working directory
-export %inline
-chgDir : FS => Has FileErr xs => (dir : Path Abs) -> App xs ()
-chgDir = chgDir' . FP
+chgDir : FS => Has FileErr xs => (dir : Path t) -> App xs ()
+chgDir dir = injectIO (changeDir_ %search t dir)
 
 ||| Runs an action in the given directory, changing back
 ||| to the current directory afterwards.
 export
-inDir' :  FS
-       => Has FileErr xs
-       => (dir : FilePath)
-       -> (act : App xs a)
-       -> App xs a
-inDir' dir act = do
-  cur <- curDir
-  finally (chgDir cur) (chgDir' dir >> act)
-
-||| Runs an action in the given directory, changing back
-||| to the current directory afterwards.
-export %inline
 inDir :  FS
       => Has FileErr xs
-      => (dir : Path Abs)
+      => (dir : Path t)
       -> (act : App xs a)
       -> App xs a
-inDir = inDir' . FP
+inDir dir act = do
+  cur <- curDir
+  finally (chgDir cur) (chgDir dir >> act)
 
 ||| List entries in a directory (without `.` and `..`)
 export
-listDir' : FS => Has FileErr xs => FilePath -> App xs (List Body)
-listDir' dir = injectIO (listDir_ %search dir)
-
-||| List entries in a directory (without `.` and `..`)
-export %inline
-listDir : FS => Has FileErr xs => Path Abs -> App xs (List Body)
-listDir = listDir' . FP
+listDir : FS => Has FileErr xs => Path t -> App xs (List Body)
+listDir dir = injectIO (listDir_ %search t dir)
 
 ||| Creates the given directory
 export
-mkDir' : FS => Has FileErr xs => FilePath -> App xs ()
-mkDir' dir = injectIO (mkDir_ %search dir)
-
-||| Creates the given directory
-export %inline
-mkDir : FS => Has FileErr xs => Path Abs -> App xs ()
-mkDir = mkDir' . FP
+mkDir : FS => Has FileErr xs => Path t -> App xs ()
+mkDir dir = injectIO (mkDir_ %search t dir)
 
 ||| Creates the given directory (including parent directories)
 export
-mkDirP' : FS => Has FileErr xs => FilePath -> App xs ()
-mkDirP' dir = go (parentDirs dir) >> mkDir' dir
-  where go : List FilePath -> App xs ()
+mkDirP : FS => Has FileErr xs => Path t -> App xs ()
+mkDirP dir = go (parentDirs dir) >> mkDir dir
+  where go : List (Path t) -> App xs ()
         go []        = pure ()
-        go (x :: xs) = when !(missing' x) $ go xs >> mkDir' x
-
-||| Creates the given directory (including parent directories)
-export %inline
-mkDirP : FS => Has FileErr xs => Path Abs -> App xs ()
-mkDirP = mkDirP' . FP
-
-||| Creates the parent directory of the given file
-export
-mkParentDir' : FS => Has FileErr xs => FilePath -> App xs ()
-mkParentDir' = traverse_ mkDirP' . parentDir
+        go (x :: xs) = when !(missing x) $ go xs >> mkDir x
 
 ||| Creates the parent directory of the given file
 export %inline
-mkParentDir : FS => Has FileErr xs => Path Abs -> App xs ()
-mkParentDir = mkParentDir' . FP
+mkParentDir : FS => Has FileErr xs => File t -> App xs ()
+mkParentDir = mkDirP . parent
 
 --------------------------------------------------------------------------------
 --          Default FS
 --------------------------------------------------------------------------------
 
-writeImpl : FilePath -> String -> IO (Either FileErr ())
-writeImpl fp s = mapFst (WriteErr fp) <$> writeFile "\{fp}" s
+writeImpl : (0 t : _) -> File t -> String -> IO (Either FileErr ())
+writeImpl _ fp s = mapFst (WriteErr fp) <$> writeFile "\{fp}" s
 
-appendImpl : FilePath -> String -> IO (Either FileErr ())
-appendImpl fp s = mapFst (WriteErr fp) <$> appendFile "\{fp}" s
+appendImpl : (0 t : _) -> File t -> String -> IO (Either FileErr ())
+appendImpl _ fp s = mapFst (WriteErr fp) <$> appendFile "\{fp}" s
 
-removeFileImpl : FilePath -> IO (Either FileErr ())
-removeFileImpl fp = mapFst (DeleteErr fp) <$> removeFile "\{fp}"
+removeFileImpl : (0 t : _) -> File t -> IO (Either FileErr ())
+removeFileImpl _ fp = mapFst (DeleteErr $ toPath fp) <$> removeFile "\{fp}"
 
-removeDirImpl : FilePath -> IO (Either FileErr ())
-removeDirImpl fp = Right <$> removeDir "\{fp}"
+removeDirImpl : (0 t : _) -> Path t -> IO (Either FileErr ())
+removeDirImpl _ fp = Right <$> removeDir "\{fp}"
 
-readImpl : FilePath -> Bits32 -> IO (Either FileErr String)
-readImpl fp limit = do
+readImpl : (0 t : _) -> File t -> Bits32 -> IO (Either FileErr String)
+readImpl _ fp limit = do
   Right s <- withFile "\{fp}" Read pure fileSize
     | Left err => pure (Left $ ReadErr fp err)
   case s <= 0 of
@@ -284,16 +224,16 @@ curDirImpl = do
     (FP p@(PAbs {})) => pure (Right p)
     _                => pure (Left CurDir)
 
-changeDirImpl : FilePath -> IO (Either FileErr ())
-changeDirImpl dir = do
+changeDirImpl : (0 t : _) -> Path t -> IO (Either FileErr ())
+changeDirImpl _ dir = do
   True <- changeDir "\{dir}" | False => pure (Left $ ChangeDir dir)
   pure $ Right ()
 
-listDirImpl : FilePath -> IO (Either FileErr $ List Body)
-listDirImpl dir = bimap (ListDir dir) (mapMaybe body) <$> listDir "\{dir}"
+listDirImpl : (0 t : _) -> Path t -> IO (Either FileErr $ List Body)
+listDirImpl _ dir = bimap (ListDir dir) (mapMaybe parse) <$> listDir "\{dir}"
 
-mkDirImpl : FilePath -> IO (Either FileErr ())
-mkDirImpl dir = mapFst (MkDir dir) <$> createDir "\{dir}"
+mkDirImpl : (0 t : _) -> Path t -> IO (Either FileErr ())
+mkDirImpl _ dir = mapFst (MkDir dir) <$> createDir "\{dir}"
 
 ||| A computer's local file system
 export
@@ -303,7 +243,7 @@ local = MkFS {
   , append_     = appendImpl
   , removeFile_ = removeFileImpl
   , removeDir_  = removeDirImpl
-  , exists_     = \fp => exists "\{fp}"
+  , exists_     = \_,fp => exists "\{fp}"
   , read_       = readImpl
   , curDir_     = curDirImpl
   , changeDir_  = changeDirImpl
