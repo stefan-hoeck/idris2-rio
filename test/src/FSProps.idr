@@ -39,11 +39,15 @@ body' : Gen String
 body' = string (linear 1 20) bodyChar
 
 body : Gen Body
-body = fromMaybe "body" . body <$> body'
+body = fromMaybe "body" . parse <$> body'
 
 export
 ending : Gen Body
-ending = fromMaybe "txt" . body <$> string (linear 1 5) alphaNum
+ending = fromMaybe "txt" . parse <$> string (linear 1 5) alphaNum
+
+export
+fileBody : Gen Body
+fileBody = [| body <.> ending |]
 
 export
 relDir : Gen (Path Rel)
@@ -57,19 +61,22 @@ export
 dir : Gen FilePath
 dir = choice [FP <$> absDir, FP <$> relDir]
 
-export
-file : Gen FilePath
-file = [| dir <.> ending |]
+toAF : FilePath -> Body -> AnyFile
+toAF (FP p) b = AF $ MkF p b
 
 export
-relativeFile : Gen FilePath
-relativeFile = [| (fromString <$> body') <.> ending |]
+file : Gen AnyFile
+file = [| toAF dir fileBody |]
+
+export
+relativeFile : Gen (File Rel)
+relativeFile = MkF neutral <$> fileBody
 
 mockFS : Gen MockFS
 mockFS = toFS (MkMockFS (MkMD []) root) <$> list (linear 0 20) dir
   where toFS : MockFS -> List FilePath -> MockFS
         toFS fs []        = fs
-        toFS fs (p :: ps) = case mkDirP p fs of
+        toFS fs (FP p :: ps) = case mkDirP p fs of
           Right fs2 => toFS fs2 ps
           Left  _   => toFS fs ps
 

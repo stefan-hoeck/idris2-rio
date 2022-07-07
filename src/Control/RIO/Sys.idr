@@ -65,10 +65,5 @@ system = MkSys sysImpl runImpl
 
 ||| Forcefully deletes a directory with all its content
 export
-rmDir' : Sys => FS => Has SysErr xs => FilePath -> App xs ()
-rmDir' dir = when !(exists' dir) $ sys "rm -rf \{dir}"
-
-||| Forcefully deletes a directory with all its content
-export %inline
-rmDir : Sys => FS => Has SysErr xs => Path Abs -> App xs ()
-rmDir = rmDir' . FP
+rmDir : Sys => FS => Has SysErr xs => Path t -> App xs ()
+rmDir dir = when !(exists dir) $ sys "rm -rf \{dir}"
