@@ -76,9 +76,68 @@ col Info    = show $ colored Green "info"
 col Warning = show $ colored Yellow "warning"
 col Error   = show $ colored Red "error"
 
+||| A console logger with colored log level tags
 export
 colorConsoleLogger : ConsoleOut -> Logger
 colorConsoleLogger c = consoleLogger c $ \l,s => "[\{col l}] \{s}"
+
+--------------------------------------------------------------------------------
+--          Syslog
+--------------------------------------------------------------------------------
+
+public export
+data Facility =
+    Kernel
+  | UserLevel
+  | MailSystem
+  | SystemDaemon
+  | Authorization
+  | SyslogInternal
+  | LinePrinter
+  | NetworkNews
+  | UUCP
+  | ClockDaemon
+  | SecurityMessages
+  | FTPDaemon
+  | NTP
+  | LogAudit
+  | LogAlert
+  | ClockDaemon2
+
+facility : Facility -> Nat
+facility Kernel           = 0
+facility UserLevel        = 1
+facility MailSystem       = 2
+facility SystemDaemon     = 3
+facility Authorization    = 4
+facility SyslogInternal   = 5
+facility LinePrinter      = 6
+facility NetworkNews      = 7
+facility UUCP             = 8
+facility ClockDaemon      = 9
+facility SecurityMessages = 10
+facility FTPDaemon        = 11
+facility NTP              = 12
+facility LogAudit         = 13
+facility LogAlert         = 14
+facility ClockDaemon2     = 15
+
+severity : LogLevel -> Nat
+severity Trace   = 7
+severity Debug   = 7
+severity Info    = 6
+severity Warning = 5
+severity Error   = 3
+
+||| A logger using syslog priority codes. This can be used with
+||| systemd services.
+export
+syslogLogger : Facility -> ConsoleOut -> Logger
+syslogLogger f c =
+  consoleLogger c $
+    \l,s =>
+      let lvl = 8 * facility f + severity l
+       in "<\{show lvl}> \{s}"
 
 --------------------------------------------------------------------------------
 --          Interface
