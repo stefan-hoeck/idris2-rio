@@ -51,6 +51,6 @@ data State : (lbl : l) -> (a : Type) -> Type where
   [search lbl]
   MkState : IORef a -> State lbl a
 
-export %inline
+export %inline %hint
 stateToST : (s : State lbl a) => ST lbl a
 stateToST {s = MkState r} = MkST (readIORef r) (writeIORef r) (modifyIORef r)
