@@ -9,11 +9,5 @@ executable = "runTest"
 
 sourcedir  = "src"
 
-depends    = base         >= 0.5.1
-           , contrib
-           , elab-util
-           , filepath
-           , hedgehog
-           , pretty-show
+depends    = hedgehog
            , rio
-           , sop
