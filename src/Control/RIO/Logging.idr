@@ -1,6 +1,6 @@
 module Control.RIO.Logging
 
-import Control.ANSI
+import Text.ANSI
 import Control.RIO.App
 import Control.RIO.Console
 
