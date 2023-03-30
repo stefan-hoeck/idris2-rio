@@ -1,6 +1,5 @@
 module Control.RIO.Mock.Logging
 
-import Control.RIO
 import Control.RIO.Logging
 import Data.IORef
 

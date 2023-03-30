@@ -1,7 +1,6 @@
 module Control.RIO.Logging
 
 import Text.ANSI
-import Control.RIO.App
 import Control.RIO.Console
 
 %default total
@@ -144,25 +143,25 @@ syslogLogger f c =
 --------------------------------------------------------------------------------
 
 export
-log : Logger => LogLevel -> Lazy String -> RIO x ()
+log : Logger => HasIO io => LogLevel -> Lazy String -> io ()
 log l s = liftIO (log %search l s)
 
 export %inline
-trace : Logger => Lazy String -> RIO x ()
+trace : Logger => HasIO io => Lazy String -> io ()
 trace = log Trace
 
 export %inline
-debug : Logger => Lazy String -> RIO x ()
+debug : Logger => HasIO io => Lazy String -> io ()
 debug = log Debug
 
 export %inline
-info : Logger => Lazy String -> RIO x ()
+info : Logger => HasIO io => Lazy String -> io ()
 info = log Info
 
 export %inline
-warn : Logger => Lazy String -> RIO x ()
+warn : Logger => HasIO io => Lazy String -> io ()
 warn = log Warning
 
 export %inline
-error : Logger => Lazy String -> RIO x ()
+error : Logger => HasIO io => Lazy String -> io ()
 error = log Error

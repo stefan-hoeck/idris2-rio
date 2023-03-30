@@ -1,6 +1,5 @@
 module Control.RIO.Mock.Console
 
-import Control.RIO
 import Control.RIO.Console
 import Data.IORef
 
