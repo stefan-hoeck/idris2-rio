@@ -76,4 +76,4 @@ public export
 handleAll : (prf : All (\t => t -> a) ts) => Union ts -> a
 handleAll {prf = h :: t} (U Z val)     = h val
 handleAll {prf = h :: t} (U (S x) val) = handleAll (U x val)
-handleAll {prf = []}     x = absurd x
+handleAll {prf = []}     x             = absurd x
