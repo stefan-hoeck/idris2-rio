@@ -1,6 +1,5 @@
 module Control.RIO.Console
 
-import Control.RIO
 import Data.IORef
 import System.File
 
@@ -24,47 +23,47 @@ stdOut : ConsoleOut
 stdOut = MkConsoleOut putStr (\s => ignore $ fPutStr stderr s)
 
 ||| Put a string to the console's standard output.
-export
-cputStr : ConsoleOut => String -> RIO x ()
+export %inline
+cputStr : ConsoleOut => HasIO io => String -> io ()
 cputStr s = liftIO $ putStr_ %search s
 
 ||| Put a string plus trailing line break
 ||| to the console's standard output.
-export
-cputStrLn : ConsoleOut => String -> RIO x ()
+export %inline
+cputStrLn : ConsoleOut => HasIO io => String -> io ()
 cputStrLn s = cputStr $ s ++ "\n"
 
 ||| Print a value to the console's standard output.
-export
-cprint : ConsoleOut => Show a => a -> RIO x ()
+export %inline
+cprint : ConsoleOut => Show a => HasIO io => a -> io ()
 cprint = cputStr . show
 
 ||| Print a value plus trailing lne break
 ||| to the console's standard output.
 export
-cprintLn : ConsoleOut => Show a => a -> RIO x ()
+cprintLn : ConsoleOut => Show a => HasIO io => a -> io ()
 cprintLn = cputStrLn . show
 
 ||| Put a string to the console's error output.
 export
-cputErr : ConsoleOut => String -> RIO x ()
+cputErr : ConsoleOut => HasIO io => String -> io ()
 cputErr s = liftIO $ putErr_ %search s
 
 ||| Put a string plus trailing line break
 ||| to the console's error output.
 export
-cputErrLn : ConsoleOut => String -> RIO x ()
+cputErrLn : ConsoleOut => HasIO io => String -> io ()
 cputErrLn s = cputErr $ s ++ "\n"
 
 ||| Print a value to the console's error output.
 export
-cprintErr : ConsoleOut => Show a => a -> RIO x ()
+cprintErr : ConsoleOut => Show a => HasIO io => a -> io ()
 cprintErr = cputErr . show
 
 ||| Print a value plus trailing lne break
 ||| to the console's error output.
 export
-cprintErrLn : ConsoleOut => Show a => a -> RIO x ()
+cprintErrLn : ConsoleOut => Show a => HasIO io => a -> io ()
 cprintErrLn = cputErrLn . show
 
 --------------------------------------------------------------------------------
@@ -85,12 +84,12 @@ stdIn = MkConsoleIn getChar getLine
 
 ||| Read a line from the console's standard input.
 export
-cgetLine : ConsoleIn => RIO x String
+cgetLine : ConsoleIn => HasIO io => io String
 cgetLine = liftIO $ getLine_ %search
 
 ||| Read a single character from the console's standard input.
 export
-cgetChar : ConsoleIn => RIO x Char
+cgetChar : ConsoleIn => HasIO io => io Char
 cgetChar = liftIO $ getChar_ %search
 
 --------------------------------------------------------------------------------
