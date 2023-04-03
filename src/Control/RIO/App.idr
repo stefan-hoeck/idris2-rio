@@ -1,7 +1,6 @@
 module Control.RIO.App
 
-import Data.List.Quantifiers
-import public Data.Union
+import public Data.List.Quantifiers.Extra
 import public Control.RIO
 import System
 
@@ -14,7 +13,7 @@ import System
 ||| A `RIO` computation, which can fail with one of several errors.
 public export
 0 App : (xs : List Type) -> (a : Type) -> Type
-App xs a = RIO (Union xs) a
+App xs a = RIO (HSum xs) a
 
 --------------------------------------------------------------------------------
 --          Throwing and injection computations that can fail
@@ -25,13 +24,13 @@ App xs a = RIO (Union xs) a
 ||| The error type has to be in the list of accepted errors.
 export
 throw : Has x xs => (err : x) -> App xs a
-throw err = fail (inj err)
+throw err = fail (inject err)
 
 ||| Inject a `RIO` computation into one dealing with several
 ||| possible errors.
 export
 inject : Has x xs => RIO x a -> App xs a
-inject = mapFst inj
+inject = mapFst inject
 
 ||| Inject an `Either x a` computation into a `RIO` monad dealing
 ||| with several possible errors.
@@ -61,14 +60,19 @@ Handler a x = x -> RIO Void a
 ||| in the resulting `App` type.
 export
 handle : (prf : Has x xs) => Handler a x -> App xs a -> App (xs - x) a
-handle f = catch $ \u => case handle f u of
+handle f = catch $ \u => case map f (decomp @{prf} u) of
   Left y  => fail y
   Right y => lift y
+
+hall : (prf : All (Handler a) ts) => HSum ts -> RIO Void a
+hall @{h :: t} (Here v)  = h v
+hall @{h :: t} (There v) = hall v
+hall @{[]}     x         = absurd x
 
 ||| Handle all errors, converting the computation to one that cannot fail.
 export
 handleAll : (prf : All (Handler a) xs) => App xs a -> RIO Void a
-handleAll = catch $ \u => Union.handleAll u
+handleAll = catch $ \u => hall u
 
 ||| Handle all errors, converting the computation to one that cannot fail.
 |||
@@ -83,7 +87,6 @@ handleAllDflt v = handleAll @{mapProperty (($> v) .) prf}
 export
 runApp : All (Handler ()) xs -> App xs () -> IO ()
 runApp hs app = do
-  True <- run $ catch (\u => Union.handleAll {prf = hs} u $> False)
-                      (app $> True)
+  True <- run $ catch (\u => hall @{hs} u $> False) (app $> True)
     | False => exitFailure
   exitSuccess
