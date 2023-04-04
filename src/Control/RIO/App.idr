@@ -29,8 +29,8 @@ throw err = fail (inject err)
 ||| Inject a `RIO` computation into one dealing with several
 ||| possible errors.
 export
-inject : Has x xs => RIO x a -> App xs a
-inject = mapFst inject
+injectRIO : Has x xs => RIO x a -> App xs a
+injectRIO = mapFst inject
 
 ||| Inject an `Either x a` computation into a `RIO` monad dealing
 ||| with several possible errors.
@@ -43,7 +43,7 @@ injectEither (Right v) = pure v
 ||| with several possible errors.
 export
 injectIO : Has x xs => IO (Either x a) -> App xs a
-injectIO = inject . liftEitherIO
+injectIO = injectRIO . liftEitherIO
 
 --------------------------------------------------------------------------------
 --          Error handling
