@@ -156,11 +156,12 @@ chgDir dir = injectIO (changeDir_ %search t dir)
 ||| Runs an action in the given directory, changing back
 ||| to the current directory afterwards.
 export
-inDir :  FS
-      => Has FileErr xs
-      => (dir : Path t)
-      -> (act : App xs a)
-      -> App xs a
+inDir :
+     {auto _ : FS}
+  -> {auto _ : Has FileErr xs}
+  -> (dir : Path t)
+  -> (act : App xs a)
+  -> App xs a
 inDir dir act = do
   cur <- curDir
   finally (chgDir cur) (chgDir dir >> act)
@@ -179,9 +180,11 @@ mkDir dir = injectIO (mkDir_ %search t dir)
 export
 mkDirP : FS => Has FileErr xs => Path t -> App xs ()
 mkDirP dir = go (parentDirs dir) >> mkDir dir
-  where go : List (Path t) -> App xs ()
-        go []        = pure ()
-        go (x :: xs) = when !(missing x) $ go xs >> mkDir x
+
+  where
+    go : List (Path t) -> App xs ()
+    go []        = pure ()
+    go (x :: xs) = when !(missing x) $ go xs >> mkDir x
 
 ||| Creates the parent directory of the given file
 export %inline
@@ -238,15 +241,16 @@ mkDirImpl _ dir = mapFst (MkDir dir) <$> createDir "\{dir}"
 ||| A computer's local file system
 export
 local : FS
-local = MkFS {
-    write_      = writeImpl
-  , append_     = appendImpl
-  , removeFile_ = removeFileImpl
-  , removeDir_  = removeDirImpl
-  , exists_     = \_,fp => exists "\{fp}"
-  , read_       = readImpl
-  , curDir_     = curDirImpl
-  , changeDir_  = changeDirImpl
-  , listDir_    = listDirImpl
-  , mkDir_      = mkDirImpl
-  }
+local =
+  MkFS
+    { write_      = writeImpl
+    , append_     = appendImpl
+    , removeFile_ = removeFileImpl
+    , removeDir_  = removeDirImpl
+    , exists_     = \_,fp => exists "\{fp}"
+    , read_       = readImpl
+    , curDir_     = curDirImpl
+    , changeDir_  = changeDirImpl
+    , listDir_    = listDirImpl
+    , mkDir_      = mkDirImpl
+    }
