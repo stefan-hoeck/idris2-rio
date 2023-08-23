@@ -38,10 +38,11 @@ namespace Read
 public export
 data ST : (lbl : l) -> (a : Type) -> Type where
   [search lbl]
-  MkST :  (read_  : IO a)
-       -> (write_ : a -> IO ())
-       -> (mod_   : (a -> a) -> IO ())
-       -> ST lbl a
+  MkST :
+       (read_  : IO a)
+    -> (write_ : a -> IO ())
+    -> (mod_   : (a -> a) -> IO ())
+    -> ST lbl a
 
 export
 mkST : HasIO io => a -> io (ST lbl a)

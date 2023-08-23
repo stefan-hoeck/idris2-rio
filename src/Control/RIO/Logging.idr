@@ -135,7 +135,7 @@ syslogLogger : Facility -> ConsoleOut -> Logger
 syslogLogger f c =
   consoleLogger c $
     \l,s =>
-      let lvl = 8 * facility f + severity l
+      let lvl := 8 * facility f + severity l
        in "<\{show lvl}> \{s}"
 
 --------------------------------------------------------------------------------

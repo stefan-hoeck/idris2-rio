@@ -74,11 +74,13 @@ relativeFile = MkF neutral <$> fileBody
 
 mockFS : Gen MockFS
 mockFS = toFS (MkMockFS (MkMD []) root) <$> list (linear 0 20) dir
-  where toFS : MockFS -> List FilePath -> MockFS
-        toFS fs []        = fs
-        toFS fs (FP p :: ps) = case mkDirP p fs of
-          Right fs2 => toFS fs2 ps
-          Left  _   => toFS fs ps
+
+  where
+    toFS : MockFS -> List FilePath -> MockFS
+    toFS fs []        = fs
+    toFS fs (FP p :: ps) = case mkDirP p fs of
+      Right fs2 => toFS fs2 ps
+      Left  _   => toFS fs ps
 
 anyString : Gen String
 anyString = string (linear 0 20) unicode
@@ -103,7 +105,9 @@ prop_readWrite = property $ do
 
 export
 props : Group
-props = MkGroup "MockFS" [
-        ("prop_rootExists", prop_rootExists)
-      , ("prop_readWrite", prop_readWrite)
-      ]
+props =
+  MkGroup
+    "MockFS"
+    [ ("prop_rootExists", prop_rootExists)
+    , ("prop_readWrite", prop_readWrite)
+    ]

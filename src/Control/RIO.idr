@@ -32,12 +32,14 @@ data Stack : (x1,x2,a,b : Type) -> Type where
 export
 eval : RIO x a -> IO (Either x a)
 eval app = fromPrim $ go app []
-  where go : RIO x1 v -> Stack x1 x2 v w -> PrimIO (Either x2 w)
-        go (Chain z f) st       w = go z (f :: st) w
-        go (Lift run) []        w = run w
-        go (Lift run) (f :: fs) w =
-          let MkIORes ei w2 = run w
-           in assert_total $ go (f ei) fs w2
+
+  where
+    go : RIO x1 v -> Stack x1 x2 v w -> PrimIO (Either x2 w)
+    go (Chain z f) st       w = go z (f :: st) w
+    go (Lift run) []        w = run w
+    go (Lift run) (f :: fs) w =
+      let MkIORes ei w2 = run w
+       in assert_total $ go (f ei) fs w2
 
 ||| Tail-recursively evaluate a `RIO` computation,
 ||| which cannot fail with an exception.

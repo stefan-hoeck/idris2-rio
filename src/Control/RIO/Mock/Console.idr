@@ -23,8 +23,9 @@ mkMockOut = [| MkMockOut (newIORef [<]) (newIORef [<]) |]
 export
 consoleOut : MockOut -> ConsoleOut
 consoleOut m =
-  MkConsoleOut (\s => modifyIORef m.stdOut (:< s))
-            (\s => modifyIORef m.errOut (:< s))
+  MkConsoleOut
+    (\s => modifyIORef m.stdOut (:< s))
+    (\s => modifyIORef m.errOut (:< s))
 
 ||| A mock console where err out and std out are mutable refs
 ||| of snoc lists and `getChar` and `getLine` are simulated
@@ -48,5 +49,6 @@ getHead ref = readIORef ref >>= \(h :: t) => writeIORef ref t $> h
 export
 console : MockIn -> ConsoleIn
 console m =
-  MkConsoleIn (getHead m.charIn)
-              (getHead m.lineIn)
+  MkConsoleIn
+    (getHead m.charIn)
+    (getHead m.lineIn)

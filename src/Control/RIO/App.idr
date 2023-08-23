@@ -60,9 +60,11 @@ Handler a x = x -> RIO Void a
 ||| in the resulting `App` type.
 export
 handle : (prf : Has x xs) => Handler a x -> App xs a -> App (xs - x) a
-handle f = catch $ \u => case map f (decomp @{prf} u) of
-  Left y  => fail y
-  Right y => lift y
+handle f =
+  catch $ \u =>
+    case map f (decomp @{prf} u) of
+      Left y  => fail y
+      Right y => lift y
 
 hall : (prf : All (Handler a) ts) => HSum ts -> RIO Void a
 hall @{h :: t} (Here v)  = h v
