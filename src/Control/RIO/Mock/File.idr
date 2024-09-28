@@ -81,7 +81,7 @@ selfOrParent fp = maybe fp fst $ split fp
 
 export
 mkdirFocus : MockDir -> Path Abs -> Maybe Focus
-mkdirFocus (MkMD ps) (PAbs sx) = go [<] ps (sx <>> [])
+mkdirFocus (MkMD ps) (PAbs u sx) = go [<] ps (sx <>> [])
 
   where
     go :
@@ -101,7 +101,7 @@ mkdirFocus (MkMD ps) (PAbs sx) = go [<] ps (sx <>> [])
 
 export
 dirFocus : MockDir -> Path Abs -> Maybe Focus
-dirFocus (MkMD ps) (PAbs sx) = go [<] ps (sx <>> [])
+dirFocus (MkMD ps) (PAbs u sx) = go [<] ps (sx <>> [])
 
   where
     go :
@@ -137,8 +137,8 @@ record MockFS where
   curDir : Path Abs
 
 absPath : MockFS -> Path t -> Path Abs
-absPath fs (PAbs sx) = PAbs sx
-absPath fs (PRel sx) = fs.curDir </> PRel sx
+absPath fs (PAbs u sx) = PAbs u sx
+absPath fs (PRel sx)   = fs.curDir </> PRel sx
 
 export
 fsFocus : MockFS -> Path t -> Maybe Focus

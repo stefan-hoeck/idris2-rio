@@ -14,3 +14,9 @@ type   = "git"
 url    = "https://github.com/stefan-hoeck/idris2-quantifiers-extra"
 commit = "latest:main"
 ipkg   = "quantifiers-extra.ipkg"
+
+[custom.all.filepath]
+type   = "git"
+url    = "https://github.com/stefan-hoeck/idris2-filepath"
+commit = "latest:main"
+ipkg   = "filepath.ipkg"
